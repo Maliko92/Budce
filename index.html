@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d6b66">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Büdcə">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Ailə Büdcəsi</title>
+<style>
+:root{color-scheme:light;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+input,select{font-size:16px}
+/* Layout: one narrow column — month summary first, then add-expense, categories, fixed payments, expense list, settings */
+:root{
+  --bg:#f3f6f5; --surface:#ffffff; --line:#d9e2e0; --fg:#14211f; --muted:#5d6f6c;
+  --accent:#0d6b66; --accent-soft:#dcefed; --ok:#2f7d32; --warn:#b26a00; --bad:#c0392b;
+  --bar:#e6eceb;
+  --c-fixed:#7d8f8c; --c-spent:#d08a2e; --c-fund:#6b5fb5; --c-free:#0d6b66;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1716; --surface:#16211f; --line:#263532; --fg:#e4eeec; --muted:#93a7a3;
+  --accent:#4cc2b8; --accent-soft:#163a37; --ok:#6cc070; --warn:#e3a33b; --bad:#ef6b5c; --bar:#22302d; --c-fixed:#6f817e; --c-spent:#e3a33b; --c-fund:#9a8ee0; --c-free:#4cc2b8; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1716; --surface:#16211f; --line:#263532; --fg:#e4eeec; --muted:#93a7a3;
+  --accent:#4cc2b8; --accent-soft:#163a37; --ok:#6cc070; --warn:#e3a33b; --bad:#ef6b5c; --bar:#22302d; --c-fixed:#6f817e; --c-spent:#e3a33b; --c-fund:#9a8ee0; --c-free:#4cc2b8; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:20px}
+h1{font-size:1.5rem;margin:0;font-weight:700;text-wrap:balance}
+h2{font-size:1rem;margin:0;font-weight:600}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.month{display:flex;align-items:center;gap:6px}
+button,input,select{font:inherit;color:inherit}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
+.hero .big{font-size:1.6rem;font-weight:600}
+.daily{background:var(--accent-soft);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+form.add{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+form.add .full{grid-column:1/-1}
+input,select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;box-sizing:border-box;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cats{display:flex;flex-direction:column;gap:12px}
+.cat .row{display:flex;justify-content:space-between;gap:8px;font-size:.92rem}
+.track{height:8px;background:var(--bar);border-radius:4px;overflow:hidden;margin-top:4px}
+.fill{height:100%;background:var(--ok);border-radius:4px}
+.fill.warn{background:var(--warn)} .fill.bad{background:var(--bad)}
+.pill{font-size:.72rem;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid currentColor}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)}
+.fixed li,.list li{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.fixed li:first-child,.list li:first-child{border-top:0}
+.list{display:flex;flex-direction:column;gap:8px}
+.day summary{list-style:none;display:flex;align-items:center;gap:10px;background:var(--accent-soft);border-radius:8px;padding:10px 12px;cursor:pointer}
+.day summary::-webkit-details-marker{display:none}
+.day summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chev{display:inline-block;font-size:1.2rem;line-height:1;color:var(--accent);transition:transform .15s}
+.day[open] .chev{transform:rotate(90deg)}
+.day ul{padding:2px 4px 0 30px}
+.day li.item:first-child{border-top:0}
+ul{list-style:none;margin:0;padding:0}
+.grow{flex:1;min-width:0}
+.sub{font-size:.8rem;color:var(--muted)}
+.fixed input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex:none}
+.done .grow{color:var(--muted);text-decoration:line-through}
+.x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:2px 6px;border-radius:6px}
+.x:hover{color:var(--bad)}
+.empty{color:var(--muted);font-size:.9rem;padding:8px 0}
+.note{font-size:.82rem;color:var(--muted)}
+.setgrid{display:grid;grid-template-columns:1fr 110px;gap:8px 10px;align-items:center}
+details summary{cursor:pointer;font-weight:600}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:.9rem}
+.view{display:flex;flex-direction:column;gap:20px}
+.notefield{position:relative}
+.noteinput{position:relative}
+/* suggestions open ABOVE the field so the phone keyboard never covers them; best match sits next to the input */
+.sugg{position:absolute;left:0;right:0;bottom:100%;margin-bottom:4px;z-index:5;background:var(--accent-soft);border:2px solid var(--accent);border-radius:10px;box-shadow:0 -8px 24px rgba(0,0,0,.22);overflow:hidden;display:flex;flex-direction:column-reverse}
+.shead{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bg);background:var(--accent);padding:6px 12px}
+.sitem mark{background:none;color:var(--accent);font-weight:700}
+.sitem .scat{font-size:.78rem;color:var(--muted);white-space:nowrap}
+.sitem{display:flex;justify-content:space-between;gap:10px;align-items:baseline;background:none;border:0;border-bottom:1px solid var(--line);padding:12px;text-align:left;cursor:pointer;font:inherit;font-weight:500;color:var(--fg)}
+.sitem:first-child{border-bottom:0}
+.sitem:hover,.sitem:focus-visible,.sitem:active{background:var(--surface);outline:none}
+.sitem span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quick{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 16px;font-size:.88rem;color:var(--muted);background:var(--accent-soft);border-radius:8px;padding:8px 12px}
+.quick b{color:var(--fg);font-weight:600}
+.daycards{display:grid;grid-template-columns:1.3fr 1fr;gap:12px}
+.dcard{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.dcard.main{background:var(--accent-soft);border-color:transparent}
+.dbig{font-size:1.9rem;font-weight:600;line-height:1.15}
+.stackbar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--bar)}
+.stackbar span{height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.legend b{color:var(--fg);font-weight:600}
+.flow li{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.flow li:first-child{border-top:0}
+.flow .dot{width:10px;height:10px;border-radius:50%;flex:none;background:transparent}
+.flow li.minus .num{color:var(--muted)}
+.flow li.eq{border-top:1px solid var(--fg)}
+.flow li.eq .grow{font-weight:600}
+.flow li.total{background:var(--accent-soft);border-radius:8px;padding:10px;border-top:0;margin-top:4px}
+.flow li.total .num{font-size:1.15rem;font-weight:600}
+.flow .num{white-space:nowrap}
+.hero3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.monthlink{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+.monthlink b{color:var(--fg);font-weight:600}
+.dlist li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.dlist li:first-child{border-top:0}
+.btn:disabled{opacity:.35;cursor:default}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.installbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;font-weight:600}
+.welcome{border-color:var(--accent)}
+.pill{display:inline-block;white-space:nowrap}
+@media (max-width:440px){.dbig{font-size:1.4rem}.hero3 .big{font-size:1.15rem}.dcard{padding:10px 12px}}
+.month{justify-content:center}
+.tabs{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.tab{background:none;border:0;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--bg)}
+.tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chart{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;height:200px;padding-top:18px;border-bottom:1px solid var(--line)}
+.col{position:relative;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;cursor:pointer;min-width:0}
+.col .bar{width:100%;max-width:34px;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px}
+.col .bar.over{background:var(--bad)}
+.col .bar.future{background:var(--bar)}
+.col .val{font-family:var(--f-num);font-size:.62rem;color:var(--muted);white-space:nowrap;margin-bottom:2px}
+.chart .limit{position:absolute;left:0;right:0;border-top:2px dashed var(--warn);pointer-events:none}
+.mlabels{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;font-size:.7rem;color:var(--muted);text-align:center;margin-top:4px}
+.key{display:inline-block;width:12px;height:10px;vertical-align:middle;border-radius:2px}
+.keybar{background:var(--accent)} .keyline{border-top:2px dashed var(--warn);height:0}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding-bottom:6px;scrollbar-width:thin;scrollbar-color:var(--muted) var(--bar)}
+.tscroll::-webkit-scrollbar{height:8px}
+.tscroll::-webkit-scrollbar-track{background:var(--bar);border-radius:4px}
+.tscroll::-webkit-scrollbar-thumb{background:var(--muted);border-radius:4px}
+.scrollhint{font-size:.78rem;color:var(--muted);text-align:center;margin-top:-4px}
+.ytable{border-collapse:collapse;width:100%;font-size:.88rem;min-width:520px}
+.ytable th,.ytable td{padding:8px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.ytable th:first-child,.ytable td:first-child{text-align:left;position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line);white-space:normal;min-width:96px;max-width:150px}
+.ytable th.curm{color:var(--accent);font-weight:700}
+.ytable thead th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+.ytable td{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.ytable td:first-child{font-family:var(--f-body)}
+.ytable tbody tr.click{cursor:pointer}
+.ytable tbody tr.click:hover td{background:var(--accent-soft)}
+.ytable tr.cur td:first-child{font-weight:700;color:var(--accent)}
+.ytable tr.total td{font-weight:700;border-top:2px solid var(--line);border-bottom:0}
+.ytable .dim{color:var(--muted)}
+.cattable{min-width:900px}
+.paytable{width:max-content;min-width:100%}
+.paytable td.pc,.paytable th.pc{min-width:34px;padding:4px 1px}
+.ytable th.pc,.ytable td.pc{text-align:center;padding:4px 2px}
+.pcell{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer;font-weight:700;font-size:.9rem;padding:0}
+.pcell:hover{border-color:var(--accent)}
+.pcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pcell.on{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.pcell.late{color:var(--bad);border-color:var(--bad)}
+.pcell.pre{opacity:.45}
+@media (max-width:440px){form.add{grid-template-columns:1fr}.col .val{display:none}}
+@media (max-width:440px){.panel{padding:12px}.ytable{font-size:.82rem}.ytable th,.ytable td{padding:7px 6px}}
+@media (prefers-reduced-motion:no-preference){.fill{transition:width .3s}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="label" id="eyebrow">Gündəlik xərclər</div>
+      <h1>Ailə Büdcəsi</h1>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tabDay" role="tab" aria-selected="true">Gün</button>
+      <button class="tab" id="tabMonth" role="tab" aria-selected="false">Ay</button>
+      <button class="tab" id="tabYear" role="tab" aria-selected="false">İl</button>
+    </div>
+  </div>
+
+  <div class="installbar" id="installBar" hidden>
+    <span>Bu proqramı telefona quraşdırın</span>
+    <button class="btn primary" id="installBtn" type="button">Quraşdır</button>
+  </div>
+
+  <div class="month" id="dayNav">
+    <button class="btn" id="dprev" aria-label="Əvvəlki gün">‹</button>
+    <strong id="dname" style="min-width:180px;text-align:center">—</strong>
+    <button class="btn" id="dnext" aria-label="Növbəti gün">›</button>
+  </div>
+  <div class="month" id="monthNav" hidden>
+    <button class="btn" id="prev" aria-label="Əvvəlki ay">‹</button>
+    <strong id="mname" style="min-width:130px;text-align:center">—</strong>
+    <button class="btn" id="next" aria-label="Növbəti ay">›</button>
+  </div>
+  <div class="month" id="yearNav" hidden>
+    <button class="btn" id="yprev" aria-label="Əvvəlki il">‹</button>
+    <strong id="yname" style="min-width:130px;text-align:center">—</strong>
+    <button class="btn" id="ynext" aria-label="Növbəti il">›</button>
+  </div>
+
+  <!-- GÜN -->
+  <div class="view" id="dayView">
+    <section class="panel welcome" id="welcome" hidden>
+      <h2>Xoş gəldiniz!</h2>
+      <div class="sub">Claude-dakı səhifədən saxladığınız <b>aile-budcesi-…json</b> faylını seçin, köhnə xərcləriniz və ödənişləriniz bura köçsün.</div>
+      <div class="btnrow">
+        <button class="btn primary" id="welcomeRestore" type="button">Faylı seç və köçür</button>
+        <button class="btn" id="welcomeSkip" type="button">Sıfırdan başla</button>
+      </div>
+    </section>
+    <section class="panel" aria-label="Xərc əlavə et">
+      <div class="top"><h2 id="formTitle">Bu günün xərcini yazın</h2><button class="btn" id="dToday" type="button" hidden>Bu günə qayıt</button></div>
+      <form class="add" id="addForm">
+        <div class="field"><label class="label" for="fAmount">Məbləğ, ₼</label><input id="fAmount" type="number" inputmode="decimal" step="0.01" min="0.01" required placeholder="0"></div>
+        <div class="field"><label class="label" for="fCat">Kateqoriya</label><select id="fCat"></select></div>
+        <div class="field notefield full"><label class="label" for="fNote">Qeyd</label><div class="noteinput"><input id="fNote" type="text" autocomplete="off" autocorrect="off" placeholder="Bravo, həftəlik bazarlıq"><div class="sugg" id="noteSugg" role="listbox" hidden></div></div></div>
+        <button class="btn primary full" type="submit">Əlavə et</button>
+      </form>
+    </section>
+
+    <section class="panel" aria-label="Günün vəziyyəti">
+      <div class="daycards">
+        <div class="dcard main">
+          <div class="label">Gündə xərcləyə bilərsiniz</div>
+          <div class="dbig num" id="sDaily">0 ₼</div>
+          <div class="sub" id="sDays">—</div>
+        </div>
+        <div class="dcard">
+          <div class="label" id="sTodayLabel">Bu gün xərclədiniz</div>
+          <div class="dbig num" id="sToday">0 ₼</div>
+          <div id="sTodayPill"></div>
+        </div>
+      </div>
+      <div class="monthlink"><span id="dMonthLine">—</span><button class="btn" id="goMonthBtn" type="button">Ay səhifəsi ›</button></div>
+    </section>
+
+    <section class="panel" aria-label="Günün xərcləri">
+      <div class="top"><h2 id="dayListTitle">Bu günün xərcləri</h2><strong class="num" id="dayTotal"></strong></div>
+      <ul class="dlist" id="dayList"></ul>
+    </section>
+  </div>
+
+  <!-- AY -->
+  <div class="view" id="monthView" hidden>
+    <section class="panel" aria-label="Aylıq rutin ödənişlər">
+      <div class="top"><h2>Aylıq rutin ödənişlər</h2><span class="sub" id="fixedProgress"></span></div>
+      <div class="hero hero3">
+        <div><div class="label">Aylıq cəmi</div><div class="big num" id="pTotal">0</div></div>
+        <div><div class="label">Ödənilib</div><div class="big num" id="pPaid">0</div></div>
+        <div><div class="label">Qalıb</div><div class="big num" id="pDue">0</div></div>
+      </div>
+      <div class="track"><div class="fill" id="pBar" style="width:0%"></div></div>
+      <ul class="fixed" id="fixed"></ul>
+      <div class="note">Ödədikcə işarələyin. Məbləğləri bu səhifənin altındakı tənzimləmələrdən dəyişə bilərsiniz.</div>
+    </section>
+
+    <section class="panel" aria-label="Ayın xülasəsi">
+      <h2>Ayın xülasəsi</h2>
+    <div>
+      <div class="stackbar" id="stackbar" aria-hidden="true"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div>
+      <div class="label" style="margin-bottom:4px">Pul hara gedir</div>
+      <ul class="flow">
+        <li><span class="dot" style="background:var(--fg)"></span>
+          <div class="grow">Maaş<div class="sub">hər ayın 1-i daxil olur</div></div>
+          <span class="num" id="sIncome">0</span></li>
+        <li class="minus"><span class="dot" style="background:var(--c-fixed)"></span>
+          <div class="grow">Sabit ödənişlər<div class="sub" id="sFixedSub">kreditlər, taksit, benzin, bağça, kommunal</div></div>
+          <span class="num" id="sFixed">0</span></li>
+        <li class="eq"><span class="dot"></span>
+          <div class="grow">Gündəlik xərclər üçün qalır<div class="sub">bazarlıq, geyim, dərman, əyləncə və s.</div></div>
+          <span class="num" id="sFree">0</span></li>
+        <li class="minus"><span class="dot" style="background:var(--c-spent)"></span>
+          <div class="grow">Bu ay artıq xərclənib<div class="sub" id="sSpentSub">—</div></div>
+          <span class="num" id="sSpent">0</span></li>
+        <li class="minus"><span class="dot" style="background:var(--c-fund)"></span>
+          <div class="grow">Fond üçün kənara qoyun<div class="sub">gözlənilməz xərclər üçün, toxunmayın</div></div>
+          <span class="num" id="sFund">0</span></li>
+        <li class="eq total"><span class="dot" style="background:var(--c-free)"></span>
+          <div class="grow">Ay sonunadək xərcləyə bilərsiniz<div class="sub" id="sLeftSub">—</div></div>
+          <span class="num" id="sLeft">0</span></li>
+      </ul>
+    </div>
+    </section>
+
+  <section class="panel" aria-label="Kateqoriyalar">
+    <div class="top"><h2>Kateqoriyalar üzrə limit</h2><span class="sub">Limitləri aşağıdan dəyişin</span></div>
+    <div class="cats" id="cats"></div>
+  </section>
+
+  <section class="panel" aria-label="Bu ayın xərcləri">
+    <h2>Ayın xərcləri, günlər üzrə</h2>
+    <div class="top" style="justify-content:flex-end;gap:8px">
+      <button class="btn" id="openAll" type="button">Hamısını aç</button>
+      <button class="btn" id="closeAll" type="button">Hamısını bağla</button>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <section class="panel" aria-label="Tənzimləmələr">
+    <details>
+      <summary>Gəlir və limitləri dəyiş</summary>
+      <div style="height:12px"></div>
+      <div class="setgrid" id="settings"></div>
+      <div style="height:12px"></div>
+      <button class="btn primary" id="saveSettings">Yadda saxla</button>
+    </details>
+  </section>
+  </div>
+
+  <!-- İL -->
+  <div class="view" id="yearView" hidden>
+    <section class="panel" aria-label="İllik xülasə">
+      <div class="hero">
+        <div><div class="label">İllik gəlir</div><div class="big num" id="yIncome">0</div></div>
+        <div><div class="label">Sabit ödənişlər</div><div class="big num" id="yFixed">0</div></div>
+        <div><div class="label">Gündəlik xərclər</div><div class="big num" id="ySpent">0</div></div>
+        <div><div class="label">Qənaət</div><div class="big num" id="yLeft">0</div></div>
+      </div>
+      <div class="note" id="yNote"></div>
+    </section>
+
+    <section class="panel" aria-label="Aylar üzrə xərclər">
+      <div class="top"><h2>Aylar üzrə gündəlik xərclər</h2>
+        <span class="sub"><span class="key keybar"></span> xərc &nbsp; <span class="key keyline"></span> limit</span></div>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <section class="panel" aria-label="Ay-ay cədvəl">
+      <h2>Ay-ay cədvəl</h2>
+      <div class="sub">Aya toxunun, həmin ayın səhifəsi açılsın.</div>
+      <div class="tscroll"><table class="ytable" id="ytable"></table></div>
+    </section>
+
+    <section class="panel" aria-label="Sabit ödənişlər üzrə il">
+      <div class="top"><h2>Sabit ödənişlər, ay-ay</h2><span class="sub" id="yPaySub"></span></div>
+      <div class="sub">Xanaya toxunun: ödənildi kimi işarələnir, yenidən toxunsanız geri alınır. &nbsp;<b style="color:var(--ok)">✓</b> ödənilib · <b style="color:var(--bad)">!</b> gecikib · ○ gözlənilir</div>
+      <div class="tscroll"><table class="ytable paytable" id="ptable"></table></div>
+    </section>
+
+    <section class="panel" aria-label="Kateqoriyalar üzrə il">
+      <h2>Kateqoriyalar üzrə, ay-ay</h2>
+      <div class="tscroll"><table class="ytable cattable" id="ctable"></table></div>
+    </section>
+  </div>
+
+  <section class="panel" id="backupPanel" aria-label="Ehtiyat nüsxə" hidden>
+    <div><h2>Ehtiyat nüsxə</h2>
+      <div class="sub">Məlumatlar yalnız bu telefonda saxlanılır. Telefonu dəyişəndə və ya brauzeri təmizləyəndə itməsin deyə ayda bir dəfə ehtiyat nüsxə saxlayın (fayl "Yükləmələr" qovluğuna düşür).</div></div>
+    <div class="btnrow">
+      <button class="btn primary" id="backupBtn" type="button">Ehtiyat nüsxəni saxla</button>
+      <button class="btn" id="restoreBtn" type="button">Fayldan bərpa et</button>
+      <button class="btn" id="exportBtn" type="button">Excel faylı</button>
+    </div>
+    <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+    <div class="note" id="lastExport"></div>
+  </section>
+  <div class="note" id="status" style="text-align:center">Yüklənir…</div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const DEFAULT_PLAN = {
+  income: 3500,
+  fixed: [
+    {key:"k35", name:"Kredit 35 000 (11,5%)", amount:779.34, day:13},
+    {key:"k15", name:"İstehlak krediti 15 000 (12,5%)", amount:398.70, day:21},
+    {key:"taksit", name:"Birbank taksit", amount:227.15, day:null},
+    {key:"benzin", name:"Benzin", amount:250, day:null},
+    {key:"bagca", name:"Uşaq bağçası", amount:150, day:null},
+    {key:"komm", name:"Kommunal", amount:100, day:null}
+  ],
+  cats: [
+    {key:"diger", name:"Əlavə xərclər", limit:100},
+    {key:"bazar", name:"Bazarlıq və qida", limit:800},
+    {key:"ev", name:"Telefon, internet, ev", limit:120},
+    {key:"usaq", name:"Uşaq xərcləri", limit:150},
+    {key:"saglam", name:"Dərman, sağlamlıq", limit:80},
+    {key:"geyim", name:"Geyim", limit:100},
+    {key:"fond", name:"Gözlənilməz xərclər fondu", limit:200}
+  ]
+};
+const $ = id => document.getElementById(id);
+const fmt = n => (Math.round(n*100)/100).toLocaleString("az-AZ",{minimumFractionDigits:2,maximumFractionDigits:2});
+const MONTHS = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
+const pad = n => String(n).padStart(2,"0");
+const now = new Date();
+let cur = {y:now.getFullYear(), m:now.getMonth()};
+const mKey = () => `${cur.y}-${pad(cur.m+1)}`;
+
+let plan = structuredClone(DEFAULT_PLAN);
+let expenses = [];          // all expenses {id,date,month,cat,amount,note}
+let paid = {};              // {"2026-10": {k35:true}}
+let store = "local";        // data lives on this phone
+const openDays = new Set(), touchedDays = new Set();
+let noteIndex = {};
+// lowercase + ignore Azerbaijani letters so "elave" finds "Əlavə"
+function norm(s){return String(s).trim().toLocaleLowerCase("az")
+  .replace(/ə/g,"e").replace(/ı/g,"i").replace(/ö/g,"o").replace(/ü/g,"u")
+  .replace(/ş/g,"s").replace(/ç/g,"c").replace(/ğ/g,"g")}
+let db = null;
+
+/* ---------- storage ---------- */
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+async function savePlan(){
+  if(store==="db"){await db.doc("budget/plan").set(plan)} else lsSet("plan",plan);
+}
+async function savePaid(month){
+  if(store==="db"){await db.doc("months/"+month).set({paid:paid[month]||{}})} else lsSet("paid",paid);
+}
+async function addExpense(e){
+  if(store==="db"){const ref=db.collection("expenses").doc(); e.id=ref.id; await ref.set(e)}
+  else{e.id="l"+Date.now(); expenses.push(e); lsSet("expenses",expenses); render()}
+}
+async function delExpense(id){
+  if(store==="db"){await db.collection("expenses").doc(id).delete()}
+  else{expenses=expenses.filter(x=>x.id!==id); lsSet("expenses",expenses); render()}
+}
+
+async function boot(){
+  plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{});
+  $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
+  try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
+  let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
+  $("welcome").hidden=!!seen||expenses.length>0;
+  render(); fillSettings(); updBackup();
+}
+
+/* ---------- render ---------- */
+const TODAY=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+let dSel=TODAY;
+const WD=["Bazar","Bazar ertəsi","Çərşənbə axşamı","Çərşənbə","Cümə axşamı","Cümə","Şənbə"];
+const catName=k=>(plan.cats.find(c=>c.key===k)||{name:k}).name;
+const sumAmt=list=>list.reduce((s,e)=>s+Number(e.amount||0),0);
+
+function monthStats(y,m){
+  const mk=`${y}-${pad(m+1)}`;
+  const monthExp=expenses.filter(e=>e.month===mk).sort((a,b)=>b.date.localeCompare(a.date)||(b.created||0)-(a.created||0));
+  const fixedTotal=plan.fixed.reduce((s,f)=>s+Number(f.amount||0),0);
+  const spent=sumAmt(monthExp);
+  const daysIn=new Date(y,m+1,0).getDate();
+  const isThis=y===now.getFullYear()&&m===now.getMonth();
+  const daysLeft=isThis?daysIn-now.getDate()+1:daysIn;
+  const fund=(plan.cats.find(c=>c.key==="fond")||{limit:0});
+  const fundLeft=Math.max(0,fund.limit-sumAmt(monthExp.filter(e=>e.cat==="fond")));
+  const free=plan.income-fixedTotal-spent-fundLeft;
+  return {mk,monthExp,fixedTotal,spent,daysLeft,isThis,fundLeft,free,daily:free/daysLeft};
+}
+
+function render(){
+  // category select (default: Əlavə xərclər)
+  const sel=$("fCat"); const prev=sel.value;
+  sel.innerHTML=plan.cats.map(c=>`<option value="${c.key}">${esc(c.name)}</option>`).join("");
+  sel.value=prev||"diger";
+  if(!sel.value&&sel.options.length) sel.selectedIndex=0;
+
+  // previously typed notes → suggestions (most used first, then most recent)
+  const idx={};
+  expenses.forEach(e=>{
+    const t=(e.note||"").trim(); if(!t) return;
+    const k=norm(t);
+    const o=idx[k]||(idx[k]={text:t,cat:e.cat,n:0,last:""});
+    o.n++; if(e.date>=o.last){o.last=e.date;o.text=t;o.cat=e.cat}
+  });
+  noteIndex=idx;
+
+  renderDay();
+  renderMonth();
+  if(view==="year") renderYear();
+}
+
+function renderDay(){
+  const [y,m,d]=dSel.split("-").map(Number);
+  const isToday=dSel===TODAY;
+  const dLabel=`${d} ${MONTHS[m-1]}`;
+  $("dname").innerHTML=`${dLabel}${y!==now.getFullYear()?" "+y:""} <span class="sub">· ${WD[new Date(y,m-1,d).getDay()]}</span>`;
+  $("dnext").disabled=isToday;
+  $("dToday").hidden=isToday;
+  $("formTitle").textContent=isToday?"Bu günün xərcini yazın":`${dLabel} üçün xərc yazın`;
+
+  const st=monthStats(now.getFullYear(),now.getMonth());
+  const dl=Math.max(0,st.daily);
+  $("sDaily").textContent=fmt(dl)+" ₼";
+  $("sDaily").style.color=st.daily<=0?"var(--bad)":"var(--accent)";
+  $("sDays").textContent=`Ay sonunadək ${st.daysLeft} gün qalıb`;
+
+  const items=expenses.filter(e=>e.date===dSel).sort((a,b)=>(b.created||0)-(a.created||0));
+  const tot=sumAmt(items);
+  $("sTodayLabel").textContent=isToday?"Bu gün xərclədiniz":`${dLabel} xərclənib`;
+  $("sToday").textContent=fmt(tot)+" ₼";
+  $("sToday").style.color=tot>dl?"var(--bad)":"var(--fg)";
+  $("sTodayPill").innerHTML=tot===0?`<span class="sub">hələ xərc yoxdur</span>`
+    :tot>dl?`<span class="pill bad">${fmt(tot-dl)} ₼ artıq</span>`
+    :`<span class="pill ok">${fmt(dl-tot)} ₼ qalıb</span>`;
+  $("dMonthLine").innerHTML=`${MONTHS[now.getMonth()]}: <b class="num">${fmt(st.spent)} ₼</b> xərclənib, ay sonunadək <b class="num">${fmt(Math.max(0,st.free))} ₼</b> qalır`;
+
+  $("dayListTitle").textContent=isToday?"Bu günün xərcləri":`${dLabel} xərcləri`;
+  $("dayTotal").textContent=items.length?fmt(tot)+" ₼":"";
+  $("dayList").innerHTML=items.length?items.map(e=>`<li>
+    <div class="grow"><div>${esc(e.note||catName(e.cat))}</div><div class="sub">${esc(catName(e.cat))}</div></div>
+    <span class="num">${fmt(e.amount)}</span>
+    <button class="x" data-del="${e.id}" aria-label="Sil">×</button></li>`).join("")
+    :`<li class="empty">${isToday?"Bu gün hələ xərc yazılmayıb. Yuxarıdakı formadan əlavə edin.":"Bu gün üçün xərc yazılmayıb."}</li>`;
+}
+
+function renderMonth(){
+  $("mname").textContent=`${MONTHS[cur.m]} ${cur.y}`;
+  const st=monthStats(cur.y,cur.m);
+  const {mk,monthExp,fixedTotal,spent,daysLeft,isThis,fundLeft,free,daily}=st;
+
+  // summary
+  $("sIncome").textContent=fmt(plan.income);
+  $("sFixed").textContent="− "+fmt(fixedTotal);
+  $("sFree").textContent=fmt(plan.income-fixedTotal);
+  $("sSpent").textContent="− "+fmt(spent);
+  $("sSpentSub").textContent=monthExp.length?`${monthExp.length} xərc yazılıb (aşağıda günlər üzrə)`:"hələ xərc yazılmayıb";
+  const pm=paid[mk]||{};
+  const done=plan.fixed.filter(f=>pm[f.key]).length;
+  $("sFixedSub").textContent=`kreditlər, taksit, benzin, bağça, kommunal · ${done}/${plan.fixed.length} ödənilib`;
+  $("sFund").textContent="− "+fmt(fundLeft);
+  $("sLeft").textContent=fmt(free);
+  $("sLeft").style.color=free<0?"var(--bad)":free<200?"var(--warn)":"var(--ok)";
+  $("sLeftSub").textContent=free<0?"büdcə aşılıb, fonddan istifadə etməli olacaqsınız":`${daysLeft} günə bölünür → gündə ${fmt(Math.max(0,daily))} ₼`;
+  const inc=Math.max(plan.income,1);
+  const seg=[["fixed",fixedTotal,"Sabit"],["spent",spent,"Xərclənib"],["fund",fundLeft,"Fond"],["free",Math.max(0,free),"Sərbəst"]];
+  $("stackbar").innerHTML=seg.map(([k,v])=>v>0?`<span style="width:${Math.min(100,v/inc*100)}%;background:var(--c-${k})"></span>`:"").join("");
+  $("legend").innerHTML=seg.map(([k,v,n])=>`<span><i style="background:var(--c-${k})"></i>${n} <b class="num">${Math.round(v/inc*100)}%</b></span>`).join("");
+
+  // category bars
+  $("cats").innerHTML=plan.cats.map(c=>{
+    const s=sumAmt(monthExp.filter(e=>e.cat===c.key));
+    const pct=c.limit>0?s/c.limit:0;
+    const cls=pct>1?"bad":pct>.85?"warn":"";
+    const pill=pct>1?`<span class="pill bad">Limit aşılıb</span>`:pct>.85?`<span class="pill warn">Limitə yaxın</span>`:"";
+    return `<div class="cat"><div class="row"><span>${esc(c.name)} ${pill}</span><span class="num">${fmt(s)} / ${fmt(c.limit)}</span></div>
+      <div class="track"><div class="fill ${cls}" style="width:${Math.min(100,pct*100)}%"></div></div></div>`;
+  }).join("");
+
+  // routine monthly payments
+  $("fixedProgress").textContent=`${done} / ${plan.fixed.length} ödənilib`;
+  const paidSum=plan.fixed.filter(f=>pm[f.key]).reduce((s,f)=>s+Number(f.amount||0),0);
+  $("pTotal").textContent=fmt(fixedTotal);
+  $("pPaid").textContent=fmt(paidSum);
+  $("pDue").textContent=fmt(fixedTotal-paidSum);
+  $("pDue").style.color=fixedTotal-paidSum>0?"var(--warn)":"var(--ok)";
+  $("pBar").style.width=(fixedTotal>0?Math.min(100,paidSum/fixedTotal*100):0)+"%";
+  const today=now.getDate();
+  $("fixed").innerHTML=plan.fixed.map(f=>{
+    let pill="";
+    if(pm[f.key]) pill=`<span class="pill ok">ödənilib</span>`;
+    else if(f.day&&isThis&&today>f.day) pill=`<span class="pill bad">gecikib</span>`;
+    else if(f.day&&isThis&&f.day-today<=3) pill=`<span class="pill warn">${f.day===today?"bu gün":(f.day-today)+" gün qalıb"}</span>`;
+    const when=f.day?`${f.day} ${MONTHS[cur.m]}`:"ay ərzində";
+    return `<li class="${pm[f.key]?"done":""}">
+    <input type="checkbox" id="fx_${f.key}" data-k="${f.key}" ${pm[f.key]?"checked":""}>
+    <label class="grow" for="fx_${f.key}">${esc(f.name)}<div class="sub">${when}</div></label>
+    ${pill}<span class="num">${fmt(f.amount)}</span></li>`;}).join("");
+
+  // month's expenses grouped by day
+  const days={}; monthExp.forEach(e=>{(days[e.date]=days[e.date]||[]).push(e)});
+  $("list").innerHTML=monthExp.length?Object.keys(days).sort().reverse().map(d=>{
+    const items=days[d]; const tot=sumAmt(items);
+    const [y,m,dd]=d.split("-").map(Number); const wd=WD[new Date(y,m-1,dd).getDay()];
+    const isOpen=openDays.has(d)||(!touchedDays.has(d)&&d===TODAY);
+    return `<details class="day" data-day="${d}" ${isOpen?"open":""}>
+      <summary><span class="chev" aria-hidden="true">›</span><span class="grow"><strong>${dd} ${MONTHS[m-1]}</strong> <span class="sub">${wd} · ${items.length} xərc</span></span>
+      <span class="num" style="font-weight:600">${fmt(tot)} ₼</span></summary>
+      <ul>${items.map(e=>`<li class="item">
+      <div class="grow"><div>${esc(e.note||catName(e.cat))}</div><div class="sub">${esc(catName(e.cat))}</div></div>
+      <span class="num">${fmt(e.amount)}</span>
+      <button class="x" data-del="${e.id}" aria-label="Sil">×</button></li>`).join("")}</ul></details>`;
+  }).join("")
+    :`<div class="empty">Bu ay hələ xərc yazılmayıb. "Gün" səhifəsindən əlavə edin.</div>`;
+}
+/* ---------- year view ---------- */
+let view="day", yCur=now.getFullYear();
+const SHORT=["Yan","Fev","Mar","Apr","May","İyn","İyl","Avq","Sen","Okt","Noy","Dek"];
+function renderYear(){
+  $("yname").textContent=String(yCur);
+  const fixedTotal=plan.fixed.reduce((s,f)=>s+Number(f.amount||0),0);
+  const limitTotal=plan.cats.reduce((s,c)=>s+Number(c.limit||0),0);
+  const nowKey=now.getFullYear()*12+now.getMonth();
+  const rows=[...Array(12)].map((_,m)=>{
+    const key=`${yCur}-${pad(m+1)}`;
+    const ex=expenses.filter(e=>e.month===key);
+    const spent=ex.reduce((s,e)=>s+Number(e.amount||0),0);
+    const idx=yCur*12+m; const future=idx>nowKey; const has=ex.length>0;
+    const active=!future&&(has||idx===nowKey);
+    const byCat={}; ex.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amount);
+    return {m,key,spent,future,active,isCur:idx===nowKey,
+      income:active?plan.income:0, fixed:active?fixedTotal:0,
+      left:active?plan.income-fixedTotal-spent:0, byCat};
+  });
+  const act=rows.filter(r=>r.active);
+  const sum=k=>act.reduce((s,r)=>s+r[k],0);
+  $("yIncome").textContent=fmt(sum("income"));
+  $("yFixed").textContent=fmt(sum("fixed"));
+  $("ySpent").textContent=fmt(sum("spent"));
+  const yl=sum("left"); $("yLeft").textContent=fmt(yl);
+  $("yLeft").style.color=yl<0?"var(--bad)":"var(--ok)";
+  $("yNote").textContent=act.length
+    ?`${act.length} ay hesablanıb. Orta aylıq gündəlik xərc: ${fmt(sum("spent")/act.length)} ₼ (limit ${fmt(limitTotal)} ₼). Sabit ödənişlər cari plana görə götürülür.`
+    :"Bu il üçün hələ məlumat yoxdur.";
+
+  // chart
+  const max=Math.max(limitTotal,...rows.map(r=>r.spent),1)*1.1;
+  $("chart").innerHTML=rows.map(r=>{
+    const h=r.spent/max*100;
+    const cls=r.future?"future":r.spent>limitTotal?"over":"";
+    return `<div class="col" data-go="${r.m}" title="${MONTHS[r.m]}: ${fmt(r.spent)} ₼">
+      ${r.spent>0?`<span class="val">${Math.round(r.spent)}</span>`:""}
+      <div class="bar ${cls}" style="height:${r.spent>0?h:0}%"></div></div>`;
+  }).join("")+`<div class="limit" style="bottom:${limitTotal/max*100}%"></div>`;
+  if(!$("mlabels")){const d=document.createElement("div");d.className="mlabels";d.id="mlabels";$("chart").after(d)}
+  $("mlabels").innerHTML=SHORT.map(s=>`<span>${s}</span>`).join("");
+
+  // month table
+  const cell=(r,v)=>r.active?fmt(v):`<span class="dim">—</span>`;
+  $("ytable").innerHTML=`<thead><tr><th>Ay</th><th>Gəlir</th><th>Sabit</th><th>Gündəlik xərc</th><th>Qalıq</th></tr></thead><tbody>`+
+    rows.map(r=>`<tr class="click ${r.isCur?"cur":""}" data-go="${r.m}"><td>${MONTHS[r.m]}</td>
+      <td>${cell(r,r.income)}</td><td>${cell(r,r.fixed)}</td><td>${cell(r,r.spent)}</td>
+      <td style="color:${!r.active?"inherit":r.left<0?"var(--bad)":"var(--ok)"}">${cell(r,r.left)}</td></tr>`).join("")+
+    `<tr class="total"><td>Cəmi</td><td>${fmt(sum("income"))}</td><td>${fmt(sum("fixed"))}</td><td>${fmt(sum("spent"))}</td><td>${fmt(yl)}</td></tr></tbody>`;
+
+  // category table
+  $("ctable").innerHTML=`<thead><tr><th>Kateqoriya</th>${SHORT.map((s,i)=>`<th data-m="${i}" class="${isCurM(i)?"curm":""}">${s}</th>`).join("")}<th>Cəmi</th></tr></thead><tbody>`+
+    plan.cats.map(c=>{
+      let t=0;
+      const tds=rows.map(r=>{const v=r.byCat[c.key]||0;t+=v;
+        const st=v>c.limit?' style="color:var(--bad)"':"";
+        return v?`<td${st}>${Math.round(v)}</td>`:`<td class="dim">·</td>`}).join("");
+      return `<tr><td>${esc(c.name)}</td>${tds}<td><strong>${Math.round(t)}</strong></td></tr>`;
+    }).join("")+`</tbody>`;
+
+  // fixed payments, month by month
+  const curKey=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+  const firstData=[...expenses.map(e=>e.month),...Object.keys(paid).filter(k=>Object.values(paid[k]||{}).some(Boolean))].sort()[0]||curKey;
+  const today=now.getDate();
+  let paidYear=0; const colPaid=Array(12).fill(0);
+  const prow=plan.fixed.map(f=>{
+    let rowSum=0,rowN=0;
+    const tds=[...Array(12)].map((_,m)=>{
+      const key=`${yCur}-${pad(m+1)}`; const idx=yCur*12+m;
+      const on=!!(paid[key]&&paid[key][f.key]);
+      let st,sym;
+      if(on){st="on";sym="✓";rowSum+=Number(f.amount||0);rowN++;colPaid[m]+=Number(f.amount||0)}
+      else if(key<firstData){st="pre";sym="·"}
+      else if(idx<nowKey||(idx===nowKey&&f.day&&today>f.day)){st="late";sym="!"}
+      else{st="open";sym="○"}
+      return `<td class="pc"><button type="button" class="pcell ${st}" data-pay="${key}|${f.key}" aria-label="${esc(f.name)}, ${MONTHS[m]}: ${on?"ödənilib":"ödənilməyib"}">${sym}</button></td>`;
+    }).join("");
+    paidYear+=rowSum;
+    return `<tr><td>${esc(f.name)}<div class="sub">${fmt(f.amount)} ₼${f.day?` · ayın ${f.day}-i`:""}</div></td>${tds}<td><strong>${fmt(rowSum)}</strong><div class="sub">${rowN} ay</div></td></tr>`;
+  }).join("");
+  $("ptable").innerHTML=`<thead><tr><th>Ödəniş</th>${SHORT.map((s,i)=>`<th data-m="${i}" class="pc${isCurM(i)?" curm":""}">${s}</th>`).join("")}<th>Cəmi</th></tr></thead><tbody>${prow}`+
+    `<tr class="total"><td>Ödənilib</td>${colPaid.map(v=>`<td class="pc">${v?Math.round(v):'<span class="dim">·</span>'}</td>`).join("")}<td>${fmt(paidYear)}</td></tr></tbody>`;
+  $("yPaySub").textContent=`${yCur}: ${fmt(paidYear)} ₼ ödənilib`;
+  autoScroll();
+}
+const isCurM=i=>yCur===now.getFullYear()&&i===now.getMonth();
+let autoScrolled=null;
+// bring the current month into view once per year shown, then leave the viewer's scroll alone
+function autoScroll(){
+  requestAnimationFrame(()=>{
+    if(autoScrolled!==yCur){
+      autoScrolled=yCur;
+      document.querySelectorAll("#yearView .tscroll").forEach(sc=>{
+        const th=sc.querySelector('thead th[data-m="'+now.getMonth()+'"]');
+        const first=sc.querySelector("thead th");
+        if(yCur!==now.getFullYear()||!th||!first){sc.scrollLeft=0;return}
+        sc.scrollLeft=Math.max(0,th.offsetLeft-first.offsetWidth-th.offsetWidth);
+      });
+    }
+    updateHints();
+  });
+}
+function updateHints(){
+  document.querySelectorAll("#yearView .tscroll").forEach(sc=>{
+    let h=sc.nextElementSibling;
+    if(!h||!h.classList.contains("scrollhint")){h=document.createElement("div");h.className="scrollhint";h.textContent="← cədvəli sağa-sola sürüşdürün →";sc.after(h)}
+    h.hidden=sc.scrollWidth<=sc.clientWidth+2;
+  });
+}
+window.addEventListener("resize",()=>{if(view==="year") updateHints()});
+/* ---------- backup, restore, Excel ---------- */
+let XLSXP=null;
+function updBackup(){
+  $("backupPanel").hidden=view==="day";
+  let last=null; try{last=localStorage.getItem("lastBackup")}catch(e){}
+  if(last){const [y,m,d]=last.split("-"); const days=Math.floor((Date.parse(TODAY)-Date.parse(last))/864e5);
+    $("lastExport").textContent=`Son ehtiyat nüsxə: ${d}.${m}.${y}`+(days>=30?" · bir aydan çox keçib, yenisini saxlayın":"");}
+  else $("lastExport").textContent="Hələ ehtiyat nüsxə saxlanmayıb.";
+}
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(!XLSXP) XLSXP=new Promise((res,rej)=>{const sc=document.createElement("script");
+    sc.src="xlsx.full.min.js"; sc.onload=()=>res(window.XLSX); sc.onerror=()=>{XLSXP=null;rej(new Error("load"))};
+    document.head.appendChild(sc);});
+  return XLSXP;
+}
+function saveFile(name,blob){
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove()},5000);
+}
+function buildWorkbook(X){
+  const wb=X.utils.book_new();
+  const serial=ds=>{const [y,m,d]=ds.split("-").map(Number);return (Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/864e5};
+  const mLabel=mk=>{const [y,m]=mk.split("-").map(Number);return `${MONTHS[m-1]} ${y}`};
+  const money=(ws,cols,from,to)=>{for(let r=from;r<=to;r++)cols.forEach(c=>{const a=c+r;if(ws[a]&&ws[a].t==="n")ws[a].z="#,##0.00"})};
+  const r2d=v=>Math.round(v*100)/100;
+  const fixedTotal=plan.fixed.reduce((t,f)=>t+Number(f.amount||0),0);
+  const ex=[...expenses].sort((a,b)=>a.date.localeCompare(b.date)||(a.created||0)-(b.created||0));
+  const r1=[["Tarix","Ay","Kateqoriya","Qeyd","Məbləğ (₼)"],
+    ...ex.map(e=>[serial(e.date),mLabel(e.month),catName(e.cat),e.note||"",Number(e.amount)]),
+    [],["","","","Cəmi",r2d(sumAmt(ex))]];
+  const w1=X.utils.aoa_to_sheet(r1);
+  for(let r=2;r<=ex.length+1;r++){w1["A"+r].z="dd.mm.yyyy"}
+  money(w1,["E"],2,r1.length);
+  w1["!cols"]=[{wch:12},{wch:15},{wch:26},{wch:32},{wch:13}];
+  X.utils.book_append_sheet(wb,w1,"Xərclər");
+  const months=[...new Set([...expenses.map(e=>e.month),...Object.keys(paid).filter(k=>Object.values(paid[k]||{}).some(Boolean))])].sort();
+  const r2=[["Ay","Gəlir","Sabit ödənişlər","Ödənilmiş sabit","Gündəlik xərclər","Qalıq"],
+    ...months.map(mk=>{const sp=sumAmt(expenses.filter(e=>e.month===mk));const pm=paid[mk]||{};
+      const pd=plan.fixed.filter(f=>pm[f.key]).reduce((t,f)=>t+Number(f.amount||0),0);
+      return [mLabel(mk),plan.income,r2d(fixedTotal),r2d(pd),r2d(sp),r2d(plan.income-fixedTotal-sp)]})];
+  const w2=X.utils.aoa_to_sheet(r2); money(w2,["B","C","D","E","F"],2,r2.length);
+  w2["!cols"]=[{wch:15},{wch:11},{wch:15},{wch:15},{wch:16},{wch:11}];
+  X.utils.book_append_sheet(wb,w2,"Aylar");
+  const r3=[["Ay",...plan.cats.map(c=>c.name),"Cəmi"],
+    ...months.map(mk=>{const me=expenses.filter(e=>e.month===mk);
+      return [mLabel(mk),...plan.cats.map(c=>r2d(sumAmt(me.filter(e=>e.cat===c.key)))),r2d(sumAmt(me))]}),
+    ["Limit",...plan.cats.map(c=>Number(c.limit||0)),plan.cats.reduce((t,c)=>t+Number(c.limit||0),0)]];
+  const w3=X.utils.aoa_to_sheet(r3);
+  money(w3,[...Array(plan.cats.length+1)].map((_,i)=>X.utils.encode_col(i+1)),2,r3.length);
+  w3["!cols"]=[{wch:15},...plan.cats.map(c=>({wch:Math.max(11,Math.min(26,c.name.length+2))})),{wch:11}];
+  X.utils.book_append_sheet(wb,w3,"Kateqoriyalar");
+  const r4=[["Ödəniş","Məbləğ (₼)","Ödəniş günü",...months.map(mLabel)],
+    ...plan.fixed.map(f=>[f.name,Number(f.amount||0),f.day?`ayın ${f.day}-i`:"",...months.map(mk=>(paid[mk]&&paid[mk][f.key])?"✓":"")])];
+  const w4=X.utils.aoa_to_sheet(r4); money(w4,["B"],2,r4.length);
+  w4["!cols"]=[{wch:30},{wch:12},{wch:12},...months.map(()=>({wch:14}))];
+  X.utils.book_append_sheet(wb,w4,"Sabit ödənişlər");
+  return wb;
+}
+$("exportBtn").onclick=async()=>{
+  const btn=$("exportBtn"); const label=btn.textContent; btn.disabled=true; btn.textContent="Hazırlanır…";
+  try{const X=await loadXLSX();
+    const buf=X.write(buildWorkbook(X),{type:"array",bookType:"xlsx"});
+    saveFile(`Aile-budcesi-${TODAY}.xlsx`,new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+    toast("Excel faylı yükləndi");
+  }catch(e){toast("Excel faylı hazırlanmadı")}
+  finally{btn.disabled=false; btn.textContent=label}
+};
+$("backupBtn").onclick=()=>{
+  const data={app:"aile-budcesi",version:1,exported:new Date().toISOString(),plan,expenses,paid};
+  saveFile(`aile-budcesi-${TODAY}.json`,new Blob([JSON.stringify(data)],{type:"application/json"}));
+  try{localStorage.setItem("lastBackup",TODAY)}catch(e){}
+  updBackup(); toast("Ehtiyat nüsxə saxlanıldı");
+};
+function pickRestore(){$("restoreFile").click()}
+$("restoreBtn").onclick=pickRestore;
+$("welcomeRestore").onclick=pickRestore;
+$("welcomeSkip").onclick=()=>{$("welcome").hidden=true; try{localStorage.setItem("welcomeDone","1")}catch(e){}};
+$("restoreFile").onchange=async ev=>{
+  const f=ev.target.files&&ev.target.files[0]; ev.target.value=""; if(!f) return;
+  let d;
+  try{d=JSON.parse(await f.text())}catch(e){d=null}
+  if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
+    toast("Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return;}
+  if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc fayldakı ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return;
+  plan=d.plan; paid=d.paid||{};
+  expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount)}));
+  lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
+  try{localStorage.setItem("welcomeDone","1")}catch(e){}
+  $("welcome").hidden=true;
+  render(); fillSettings(); toast(`${expenses.length} xərc köçürüldü`);
+};
+
+/* ---------- install as an app ---------- */
+let installEvt=null;
+addEventListener("beforeinstallprompt",e=>{e.preventDefault(); installEvt=e; $("installBar").hidden=false});
+addEventListener("appinstalled",()=>{$("installBar").hidden=true; toast("Proqram quraşdırıldı")});
+$("installBtn").onclick=async()=>{ if(!installEvt) return; installEvt.prompt(); try{await installEvt.userChoice}catch(e){} installEvt=null; $("installBar").hidden=true; };
+if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+
+function setView(v){
+  view=v;
+  $("dayView").hidden=v!=="day"; $("monthView").hidden=v!=="month"; $("yearView").hidden=v!=="year";
+  $("dayNav").hidden=v!=="day"; $("monthNav").hidden=v!=="month"; $("yearNav").hidden=v!=="year";
+  $("tabDay").setAttribute("aria-selected",v==="day");
+  $("tabMonth").setAttribute("aria-selected",v==="month");
+  $("tabYear").setAttribute("aria-selected",v==="year");
+  $("eyebrow").textContent=v==="day"?"Gündəlik xərclər":v==="month"?"Aylıq büdcə":"İllik baxış";
+  updBackup();
+  if(v==="year"){autoScrolled=null; renderYear();}
+}
+function goMonth(m){cur={y:yCur,m:Number(m)};render();setView("month");window.scrollTo(0,0)}
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function fillSettings(){
+  let h=`<label for="setIncome">Aylıq gəlir</label><input id="setIncome" type="number" step="0.01" value="${plan.income}">`;
+  h+=`<div class="label" style="grid-column:1/-1;margin-top:6px">Sabit ödənişlər</div>`;
+  plan.fixed.forEach(f=>{h+=`<label for="sf_${f.key}">${esc(f.name)}</label><input id="sf_${f.key}" type="number" step="0.01" value="${f.amount}">`});
+  h+=`<div class="label" style="grid-column:1/-1;margin-top:6px">Kateqoriya limitləri</div>`;
+  plan.cats.forEach(c=>{h+=`<label for="sc_${c.key}">${esc(c.name)}</label><input id="sc_${c.key}" type="number" step="1" value="${c.limit}">`});
+  $("settings").innerHTML=h;
+}
+
+function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,1800)}
+
+/* ---------- events ---------- */
+$("prev").onclick=()=>{cur.m--; if(cur.m<0){cur.m=11;cur.y--} render()};
+$("next").onclick=()=>{cur.m++; if(cur.m>11){cur.m=0;cur.y++} render()};
+$("addForm").addEventListener("submit",async ev=>{
+  ev.preventDefault();
+  const amount=parseFloat($("fAmount").value); const date=dSel;
+  if(!(amount>0)) return;
+  const e={date,month:date.slice(0,7),cat:$("fCat").value,amount:Math.round(amount*100)/100,note:$("fNote").value.trim(),created:Date.now()};
+  try{await addExpense(e); $("fAmount").value=""; $("fNote").value=""; $("noteSugg").hidden=true; toast("Əlavə edildi")}
+  catch(x){toast("Yadda saxlanmadı: "+(x.code||"xəta"))}
+});
+document.addEventListener("click",async ev=>{
+  const b=ev.target.closest&&ev.target.closest("[data-del]"); if(!b) return;
+  try{await delExpense(b.dataset.del); toast("Silindi")}catch(x){toast("Silinmədi: "+(x.code||"xəta"))}
+});
+function shiftDay(n){
+  const [y,m,d]=dSel.split("-").map(Number); const dt=new Date(y,m-1,d+n);
+  dSel=`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+  if(dSel>TODAY) dSel=TODAY;
+  renderDay();
+}
+$("dprev").onclick=()=>shiftDay(-1);
+$("dnext").onclick=()=>shiftDay(1);
+$("dToday").onclick=()=>{dSel=TODAY;renderDay()};
+$("goMonthBtn").onclick=()=>{cur={y:now.getFullYear(),m:now.getMonth()};renderMonth();setView("month");window.scrollTo(0,0)};
+$("list").addEventListener("toggle",ev=>{
+  const d=ev.target.dataset&&ev.target.dataset.day; if(!d) return;
+  touchedDays.add(d); ev.target.open?openDays.add(d):openDays.delete(d);
+},true);
+function setAll(open){document.querySelectorAll("#list details.day").forEach(el=>{
+  const d=el.dataset.day; touchedDays.add(d); open?openDays.add(d):openDays.delete(d); el.open=open;})}
+function pickNote(o){
+  $("fNote").value=o.text;
+  if(plan.cats.some(c=>c.key===o.cat)) $("fCat").value=o.cat;
+  $("noteSugg").hidden=true;
+}
+function showSugg(){
+  const q=norm($("fNote").value); const box=$("noteSugg");
+  if(!q){box.hidden=true;return}
+  const all=Object.entries(noteIndex).filter(([k])=>k!==q&&k.includes(q));
+  all.sort(([ka,a],[kb,b])=>(kb.startsWith(q)-ka.startsWith(q))||b.n-a.n||b.last.localeCompare(a.last));
+  const top=all.slice(0,5);
+  if(!top.length){box.hidden=true;return}
+  const catName=k=>(plan.cats.find(c=>c.key===k)||{name:""}).name;
+  const hl=t=>{const i=norm(t).indexOf(q); return i<0?esc(t):esc(t.slice(0,i))+"<mark>"+esc(t.slice(i,i+q.length))+"</mark>"+esc(t.slice(i+q.length))};
+  box.innerHTML=top.map(([k,o])=>`<button type="button" class="sitem" data-k="${esc(k)}"><span>${hl(o.text)}</span><span class="scat">${esc(catName(o.cat))}</span></button>`).join("")+`<div class="shead">Əvvəlki qeydlər</div>`;
+  box.hidden=false;
+}
+$("fNote").addEventListener("input",()=>{
+  const o=noteIndex[norm($("fNote").value)];
+  if(o&&plan.cats.some(c=>c.key===o.cat)) $("fCat").value=o.cat;
+  showSugg();
+});
+$("fNote").addEventListener("keydown",ev=>{if(ev.key==="Escape") $("noteSugg").hidden=true});
+$("fNote").addEventListener("blur",()=>setTimeout(()=>{$("noteSugg").hidden=true},150));
+$("noteSugg").addEventListener("pointerdown",ev=>ev.preventDefault());
+$("noteSugg").addEventListener("click",ev=>{
+  const b=ev.target.closest(".sitem"); if(!b) return;
+  const o=noteIndex[b.dataset.k]; if(o) pickNote(o);
+});
+$("openAll").onclick=()=>setAll(true);
+$("closeAll").onclick=()=>setAll(false);
+$("fixed").addEventListener("change",async ev=>{
+  const k=ev.target.dataset.k; if(!k) return;
+  const mk=mKey(); paid[mk]={...(paid[mk]||{}),[k]:ev.target.checked}; render();
+  try{await savePaid(mk)}catch(x){toast("Yadda saxlanmadı")}
+});
+$("saveSettings").onclick=async()=>{
+  const p=structuredClone(plan);
+  p.income=parseFloat($("setIncome").value)||0;
+  p.fixed.forEach(f=>f.amount=parseFloat($("sf_"+f.key).value)||0);
+  p.cats.forEach(c=>c.limit=parseFloat($("sc_"+c.key).value)||0);
+  plan=p; render();
+  try{await savePlan(); toast("Yadda saxlanıldı")}catch(x){toast("Yadda saxlanmadı")}
+};
+$("tabDay").onclick=()=>setView("day");
+$("tabMonth").onclick=()=>setView("month");
+$("ptable").addEventListener("click",async ev=>{
+  const b=ev.target.closest(".pcell"); if(!b) return;
+  const [key,fk]=b.dataset.pay.split("|");
+  paid[key]={...(paid[key]||{}),[fk]:!(paid[key]&&paid[key][fk])};
+  render();
+  try{await savePaid(key)}catch(x){toast("Yadda saxlanmadı")}
+});
+$("tabYear").onclick=()=>{yCur=cur.y;setView("year")};
+$("yprev").onclick=()=>{yCur--;renderYear()};
+$("ynext").onclick=()=>{yCur++;renderYear()};
+document.addEventListener("click",ev=>{
+  const g=ev.target.closest&&ev.target.closest("[data-go]"); if(g) goMonth(g.dataset.go);
+});
+fillSettings();
+boot();
+</script>
+</body>
+</html>
