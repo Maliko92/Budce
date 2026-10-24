@@ -121,6 +121,26 @@ details summary{cursor:pointer;font-weight:600}
 .dlist li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .dlist li:first-child{border-top:0}
 .btn:disabled{opacity:.35;cursor:default}
+.weeknav{display:flex;flex-direction:column;gap:8px}
+.wamounts .wa{text-align:center;font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:.68rem;letter-spacing:-.02em;font-weight:600;padding:5px 0;border-radius:8px;border:1px dashed var(--line);color:var(--fg);white-space:nowrap;overflow:hidden;min-height:1.3em}
+.wamounts .wa.zero{color:var(--muted);font-weight:400}
+.wamounts .wa.sel{border-style:solid;border-color:var(--accent);background:var(--accent-soft)}
+.wamounts .wa.fut{opacity:.35}
+.weekhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.weekhead strong{text-align:center}
+.weektotal{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:9px 12px;border-radius:10px;background:var(--accent-soft);font-size:.9rem}
+.weektotal b{font-family:var(--f-num);font-size:1.1rem;color:var(--accent);white-space:nowrap}
+.weekstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.wd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;font:inherit;min-width:0}
+.wdn{font-size:.64rem;color:var(--muted);white-space:nowrap}
+.wdd{font-size:1.15rem;font-weight:700;font-family:var(--f-num);line-height:1.2}
+.wds{font-size:.64rem;color:var(--muted);font-family:var(--f-num);min-height:1.2em;white-space:nowrap}
+.wd.today{border:2px solid var(--accent);padding:7px 0 5px}
+.wd.today .wdn{color:var(--accent);font-weight:700}
+.wd.sel{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.wd.sel .wdn,.wd.sel .wds{color:var(--bg)}
+.wd:disabled{opacity:.35;cursor:default}
+.wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
 .installbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;font-weight:600}
 .welcome{border-color:var(--accent)}
@@ -160,14 +180,63 @@ details summary{cursor:pointer;font-weight:600}
 .ytable .dim{color:var(--muted)}
 .cattable{min-width:900px}
 .paytable{width:max-content;min-width:100%}
-.paytable td.pc,.paytable th.pc{min-width:34px;padding:4px 1px}
+.paytable thead th{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.paytable thead th.curm{background:var(--accent);color:var(--bg)}
+.paytable tbody td:first-child{background:var(--bg)}
+.paytable td:last-child,.paytable th:last-child{background:var(--accent-soft);text-align:right}
+.paytable tr.total td{background:var(--bg);font-weight:700;border-top:2px solid var(--line)}
+.paytable tr.total td:last-child{background:var(--accent-soft)}
+.paytable tr.grand td{background:var(--accent);color:var(--bg);font-weight:800;border-top:0}
+.paytable tr.grand td .dim{color:var(--bg);opacity:.75}
+.pcell.empty .pv{font-style:normal}
+.paytable td.pc,.paytable th.pc{min-width:90px;padding:4px 3px}
 .ytable th.pc,.ytable td.pc{text-align:center;padding:4px 2px}
-.pcell{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer;font-weight:700;font-size:.9rem;padding:0}
+.pcell{width:100%;min-width:78px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer;font:inherit}
+.pcell .pi{font-size:.8rem;font-weight:700;line-height:1}
+.pcell .pv{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:.86rem;font-weight:700;white-space:nowrap;color:var(--fg)}
+.pcell.open .pv{font-weight:500}
+.pcell.on .pv{color:var(--surface)}
+.pcell.late .pv{color:var(--bad)}
 .pcell:hover{border-color:var(--accent)}
 .pcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.pcell.on{background:var(--ok);border-color:var(--ok);color:var(--surface)}
-.pcell.late{color:var(--bad);border-color:var(--bad)}
+.pcell.on{background:var(--ok);border-color:var(--ok);color:var(--surface);box-shadow:0 1px 0 rgba(0,0,0,.15)}
+.pcell.late{color:var(--bad);border:2px solid var(--bad);padding:5px 3px}
 .pcell.pre{opacity:.45}
+.pcell.fin{opacity:.45;cursor:default;border-style:dashed}
+.paytable td:first-child{min-width:140px}
+.debt{margin-top:5px;display:flex;flex-direction:column;gap:1px;font-size:.74rem;color:var(--muted)}
+.debt b{color:var(--fg);font-family:var(--f-num);font-weight:700}
+.debt .dleft b{color:var(--warn)}
+.dbar.used span{background:var(--c-spent)}
+.pcell.empty{border-style:dashed}
+.pcell.empty .pv{font-weight:400;color:var(--muted)}
+.gracerow td{background:var(--surface);background:color-mix(in srgb,var(--c-spent) 7%,var(--surface))}
+.sheet{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.sheet-card{background:var(--surface);color:var(--fg);border-radius:14px;padding:16px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box}
+.sheet-card h2{font-size:1rem}
+.chk{display:flex;align-items:center;gap:8px;font-weight:600}
+.chk input{width:20px;height:20px;accent-color:var(--ok)}
+.sheet-part{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.gsrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pcell .pbk{font-size:.62rem;line-height:1.25;white-space:nowrap;color:var(--muted);font-family:var(--f-num)}
+.pcell.on .pbk{color:var(--surface)}
+.pcell.late .pbk{color:var(--bad)}
+.debt .dfree b{color:var(--ok)}
+.cardbar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--bar)}
+.cardbar span{height:100%}
+#cbGrace{background:var(--c-spent)} #cbTaksit{background:var(--c-fund)}
+.graceadd{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.graceadd .btn{grid-column:1/-1}
+.taksitrow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;border-block:1px solid var(--line)}
+.btn.okbtn{background:var(--ok);border-color:var(--ok);color:var(--surface);font-weight:600}
+.cardtable{min-width:100%;font-size:.78rem}
+.cardtable th,.cardtable td{padding:7px 4px}
+.cardtable th:first-child,.cardtable td:first-child{min-width:58px}
+.cardtable tr.cur td{background:var(--accent-soft)}
+#graceList li{flex-wrap:wrap}
+.sethead{grid-column:1/-1;font-weight:600;margin-top:6px;padding-top:8px;border-top:1px solid var(--line)}
+.dbar{height:6px;border-radius:3px;background:var(--bar);overflow:hidden;margin-top:3px}
+.dbar span{display:block;height:100%;background:var(--ok);border-radius:3px}
 @media (max-width:440px){form.add{grid-template-columns:1fr}.col .val{display:none}}
 @media (max-width:440px){.panel{padding:12px}.ytable{font-size:.82rem}.ytable th,.ytable td{padding:7px 6px}}
 @media (prefers-reduced-motion:no-preference){.fill{transition:width .3s}}
@@ -193,10 +262,15 @@ details summary{cursor:pointer;font-weight:600}
     <button class="btn primary" id="installBtn" type="button">Quraşdır</button>
   </div>
 
-  <div class="month" id="dayNav">
-    <button class="btn" id="dprev" aria-label="Əvvəlki gün">‹</button>
-    <strong id="dname" style="min-width:180px;text-align:center">—</strong>
-    <button class="btn" id="dnext" aria-label="Növbəti gün">›</button>
+  <div class="weeknav" id="dayNav">
+    <div class="weekhead">
+      <button class="btn" id="dprev" aria-label="Əvvəlki həftə">‹</button>
+      <strong id="dname">—</strong>
+      <button class="btn" id="dnext" aria-label="Növbəti həftə">›</button>
+    </div>
+    <div class="weekstrip" id="weekStrip" role="tablist" aria-label="Həftənin günləri"></div>
+    <div class="weekstrip wamounts" id="weekAmts" aria-hidden="true"></div>
+    <div class="weektotal" id="weekTotal"></div>
   </div>
   <div class="month" id="monthNav" hidden>
     <button class="btn" id="prev" aria-label="Əvvəlki ay">‹</button>
@@ -220,11 +294,11 @@ details summary{cursor:pointer;font-weight:600}
       </div>
     </section>
     <section class="panel" aria-label="Xərc əlavə et">
-      <div class="top"><h2 id="formTitle">Bu günün xərcini yazın</h2><button class="btn" id="dToday" type="button" hidden>Bu günə qayıt</button></div>
+      <h2 id="formTitle">Bu günün xərcini yazın</h2>
       <form class="add" id="addForm">
-        <div class="field"><label class="label" for="fAmount">Məbləğ, ₼</label><input id="fAmount" type="number" inputmode="decimal" step="0.01" min="0.01" required placeholder="0"></div>
-        <div class="field"><label class="label" for="fCat">Kateqoriya</label><select id="fCat"></select></div>
-        <div class="field notefield full"><label class="label" for="fNote">Qeyd</label><div class="noteinput"><input id="fNote" type="text" autocomplete="off" autocorrect="off" placeholder="Bravo, həftəlik bazarlıq"><div class="sugg" id="noteSugg" role="listbox" hidden></div></div></div>
+        <div class="field full"><label class="label" for="fCat">Kateqoriya</label><select id="fCat"></select></div>
+        <div class="field notefield full"><label class="label" for="fNote">Qeyd</label><div class="noteinput"><input id="fNote" type="text" autocomplete="off" autocorrect="off" placeholder="Qeyd yazın"><div class="sugg" id="noteSugg" role="listbox" hidden></div></div></div>
+        <div class="field full"><label class="label" for="fAmount">Məbləğ, ₼</label><input id="fAmount" type="number" inputmode="decimal" step="0.01" min="0.01" required placeholder="0"></div>
         <button class="btn primary full" type="submit">Əlavə et</button>
       </form>
     </section>
@@ -253,63 +327,19 @@ details summary{cursor:pointer;font-weight:600}
 
   <!-- AY -->
   <div class="view" id="monthView" hidden>
-    <section class="panel" aria-label="Aylıq rutin ödənişlər">
-      <div class="top"><h2>Aylıq rutin ödənişlər</h2><span class="sub" id="fixedProgress"></span></div>
+    <section class="panel" aria-label="Sabit ödənişlər">
+      <div class="top"><h2>Sabit ödənişlər</h2><span class="sub" id="fixedProgress"></span></div>
       <div class="hero hero3">
         <div><div class="label">Aylıq cəmi</div><div class="big num" id="pTotal">0</div></div>
         <div><div class="label">Ödənilib</div><div class="big num" id="pPaid">0</div></div>
         <div><div class="label">Qalıb</div><div class="big num" id="pDue">0</div></div>
       </div>
       <div class="track"><div class="fill" id="pBar" style="width:0%"></div></div>
-      <ul class="fixed" id="fixed"></ul>
-      <div class="note">Ödədikcə işarələyin. Məbləğləri bu səhifənin altındakı tənzimləmələrdən dəyişə bilərsiniz.</div>
+      <div class="sub">Ödədikcə xanaya toxunun, yenidən toxunsanız geri alınır. Kartın xanasına toxunanda həmin ayın taksitini və güzəşt borcunu bir yerdə qeyd edirsiniz. &nbsp;<b style="color:var(--ok)">✓</b> ödənilib · <b style="color:var(--bad)">!</b> gecikib · ○ gözlənilir</div>
+      <div class="tscroll" id="pscroll"><table class="ytable paytable" id="ptable"></table></div>
+      <div class="note"><span id="yPaySub"></span> Məbləğləri bu səhifənin altındakı tənzimləmələrdən dəyişə bilərsiniz.</div>
     </section>
 
-    <section class="panel" aria-label="Ayın xülasəsi">
-      <h2>Ayın xülasəsi</h2>
-    <div>
-      <div class="stackbar" id="stackbar" aria-hidden="true"></div>
-      <div class="legend" id="legend"></div>
-    </div>
-
-    <div>
-      <div class="label" style="margin-bottom:4px">Pul hara gedir</div>
-      <ul class="flow">
-        <li><span class="dot" style="background:var(--fg)"></span>
-          <div class="grow">Maaş<div class="sub">hər ayın 1-i daxil olur</div></div>
-          <span class="num" id="sIncome">0</span></li>
-        <li class="minus"><span class="dot" style="background:var(--c-fixed)"></span>
-          <div class="grow">Sabit ödənişlər<div class="sub" id="sFixedSub">kreditlər, taksit, benzin, bağça, kommunal</div></div>
-          <span class="num" id="sFixed">0</span></li>
-        <li class="eq"><span class="dot"></span>
-          <div class="grow">Gündəlik xərclər üçün qalır<div class="sub">bazarlıq, geyim, dərman, əyləncə və s.</div></div>
-          <span class="num" id="sFree">0</span></li>
-        <li class="minus"><span class="dot" style="background:var(--c-spent)"></span>
-          <div class="grow">Bu ay artıq xərclənib<div class="sub" id="sSpentSub">—</div></div>
-          <span class="num" id="sSpent">0</span></li>
-        <li class="minus"><span class="dot" style="background:var(--c-fund)"></span>
-          <div class="grow">Fond üçün kənara qoyun<div class="sub">gözlənilməz xərclər üçün, toxunmayın</div></div>
-          <span class="num" id="sFund">0</span></li>
-        <li class="eq total"><span class="dot" style="background:var(--c-free)"></span>
-          <div class="grow">Ay sonunadək xərcləyə bilərsiniz<div class="sub" id="sLeftSub">—</div></div>
-          <span class="num" id="sLeft">0</span></li>
-      </ul>
-    </div>
-    </section>
-
-  <section class="panel" aria-label="Kateqoriyalar">
-    <div class="top"><h2>Kateqoriyalar üzrə limit</h2><span class="sub">Limitləri aşağıdan dəyişin</span></div>
-    <div class="cats" id="cats"></div>
-  </section>
-
-  <section class="panel" aria-label="Bu ayın xərcləri">
-    <h2>Ayın xərcləri, günlər üzrə</h2>
-    <div class="top" style="justify-content:flex-end;gap:8px">
-      <button class="btn" id="openAll" type="button">Hamısını aç</button>
-      <button class="btn" id="closeAll" type="button">Hamısını bağla</button>
-    </div>
-    <div class="list" id="list"></div>
-  </section>
 
   <section class="panel" aria-label="Tənzimləmələr">
     <details>
@@ -346,12 +376,6 @@ details summary{cursor:pointer;font-weight:600}
       <div class="tscroll"><table class="ytable" id="ytable"></table></div>
     </section>
 
-    <section class="panel" aria-label="Sabit ödənişlər üzrə il">
-      <div class="top"><h2>Sabit ödənişlər, ay-ay</h2><span class="sub" id="yPaySub"></span></div>
-      <div class="sub">Xanaya toxunun: ödənildi kimi işarələnir, yenidən toxunsanız geri alınır. &nbsp;<b style="color:var(--ok)">✓</b> ödənilib · <b style="color:var(--bad)">!</b> gecikib · ○ gözlənilir</div>
-      <div class="tscroll"><table class="ytable paytable" id="ptable"></table></div>
-    </section>
-
     <section class="panel" aria-label="Kateqoriyalar üzrə il">
       <h2>Kateqoriyalar üzrə, ay-ay</h2>
       <div class="tscroll"><table class="ytable cattable" id="ctable"></table></div>
@@ -371,6 +395,32 @@ details summary{cursor:pointer;font-weight:600}
   </section>
   <div class="note" id="status" style="text-align:center">Yüklənir…</div>
 </div>
+<div class="sheet" id="graceSheet" hidden>
+  <form class="sheet-card" id="gsForm">
+    <h2 id="gsTitle">Birkart</h2>
+    <div class="sheet-part" id="gsTPart">
+      <div class="label">Taksit</div>
+      <label class="chk"><input type="checkbox" id="gsTPaid"> <span id="gsTTxt">Ödənilib</span></label>
+    </div>
+    <div class="sheet-part">
+      <div class="label">Güzəşt borcu (kartdan istifadə)</div>
+      <div class="gsrow">
+        <div class="field"><label class="label" for="gsAmount">Məbləğ, ₼</label><input id="gsAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+        <div class="field"><label class="label" for="gsDue">Son tarix</label><input id="gsDue" type="date"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="gsPaid"> Güzəşt borcu ödənilib</label>
+    </div>
+    <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn" type="button" id="gsClose">Bağla</button></div>
+  </form>
+</div>
+<div class="sheet" id="billSheet" hidden>
+  <form class="sheet-card" id="bsForm">
+    <h2 id="bsTitle">Qaz</h2>
+    <div class="field"><label class="label" for="bsAmount">Bu ayın məbləği, ₼</label><input id="bsAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+    <label class="chk"><input type="checkbox" id="bsPaid"> Ödənilib</label>
+    <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn" type="button" id="bsClose">Bağla</button></div>
+  </form>
+</div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -379,20 +429,25 @@ const DEFAULT_PLAN = {
   fixed: [
     {key:"k35", name:"Kredit 35 000 (11,5%)", amount:779.34, day:13},
     {key:"k15", name:"İstehlak krediti 15 000 (12,5%)", amount:398.70, day:21},
-    {key:"taksit", name:"Birbank taksit", amount:227.15, day:null},
-    {key:"benzin", name:"Benzin", amount:250, day:null},
+    {key:"taksit", name:"Birkart taksit", amount:227.15, day:null},
     {key:"bagca", name:"Uşaq bağçası", amount:150, day:null},
-    {key:"komm", name:"Kommunal", amount:100, day:null}
+    {key:"qaz", name:"Qaz", amount:0, day:null, variable:true, group:"kommunal"},
+    {key:"su", name:"Su", amount:0, day:null, variable:true, group:"kommunal"},
+    {key:"isiq", name:"İşıq", amount:0, day:null, variable:true, group:"kommunal"},
+    {key:"internet", name:"İnternet", amount:0, day:null, variable:true, group:"kommunal"},
+    {key:"mida", name:"MİDA kommunal", amount:0, day:null, variable:true, group:"kommunal"}
   ],
   cats: [
     {key:"diger", name:"Əlavə xərclər", limit:100},
     {key:"bazar", name:"Bazarlıq və qida", limit:800},
+    {key:"benzin", name:"Benzin", limit:250},
     {key:"ev", name:"Telefon, internet, ev", limit:120},
     {key:"usaq", name:"Uşaq xərcləri", limit:150},
     {key:"saglam", name:"Dərman, sağlamlıq", limit:80},
     {key:"geyim", name:"Geyim", limit:100},
     {key:"fond", name:"Gözlənilməz xərclər fondu", limit:200}
-  ]
+  ],
+  card: {name:"Birkart", limit:10000, taksit:"taksit", months:{}}
 };
 const $ = id => document.getElementById(id);
 const fmt = n => (Math.round(n*100)/100).toLocaleString("az-AZ",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -433,8 +488,54 @@ async function delExpense(id){
   else{expenses=expenses.filter(x=>x.id!==id); lsSet("expenses",expenses); render()}
 }
 
+// one-time: attach the loan balances known in October 2026 to the existing payments
+function migratePlan(){
+  if(plan.debtSeeded) return;
+  const SEED={k35:{total:45981.06,from:"2026-10",left:38967.00},k15:{total:19137.60,from:"2026-10",left:18340.20},taksit:{total:1000,from:"2026-10",left:1000}};
+  plan.fixed.forEach(f=>{if(SEED[f.key]&&!f.debt) f.debt={...SEED[f.key]}});
+  plan.debtSeeded=true; lsSet("plan",plan);
+}
+// one-time: benzin moves to daily expenses; the credit card gets its own section
+function migrateV3(){
+  if(plan.v3) return;
+  const bi=plan.fixed.findIndex(f=>f.key==="benzin");
+  if(bi>=0){const amt=Number(plan.fixed[bi].amount||250); plan.fixed.splice(bi,1);
+    if(!plan.cats.some(c=>c.key==="benzin")){const at=plan.cats.findIndex(c=>c.key==="bazar"); plan.cats.splice(at>=0?at+1:plan.cats.length,0,{key:"benzin",name:"Benzin",limit:amt});}}
+  if(!plan.card) plan.card={name:"Birkart",limit:10000,taksit:"taksit",grace:[{id:"g1",amount:3355.94,due:"2026-11-02"},{id:"g2",amount:693.54,due:"2026-11-30"}]};
+  plan.v3=true; lsSet("plan",plan);
+}
+// one-time: the card's grace debts become one amount per month (they show as a row in the payments table)
+function migrateV4(){
+  if(plan.v4) return;
+  if(plan.card&&!plan.card.months){
+    const mo={};
+    (plan.card.grace||[]).forEach(g=>{const k=String(g.due||"").slice(0,7); if(!k) return;
+      const e=mo[k]||{amount:0,due:g.due,paid:false}; e.amount=rnd2(e.amount+Number(g.amount||0)); if(g.due<e.due) e.due=g.due; mo[k]=e;});
+    plan.card.months=mo;
+  }
+  if(plan.card){delete plan.card.grace; delete plan.card.log;}
+  plan.v4=true; lsSet("plan",plan);
+}
+// one-time: "Kommunal" is split into gas, water, electricity, internet and the MİDA service fee
+function migrateV5(){
+  if(plan.v5) return;
+  const i=plan.fixed.findIndex(f=>f.key==="komm");
+  const items=[["qaz","Qaz"],["su","Su"],["isiq","İşıq"],["internet","İnternet"],["mida","MİDA kommunal"]]
+    .filter(([k])=>!plan.fixed.some(f=>f.key===k)).map(([key,name])=>({key,name,amount:0,day:null,variable:true,group:"kommunal"}));
+  if(i>=0) plan.fixed.splice(i,1,...items); else plan.fixed.push(...items);
+  plan.v5=true; lsSet("plan",plan);
+}
+// one-time: which bank each loan is with and how much was borrowed
+function migrateBanks(){
+  if(plan.bankSeeded) return;
+  const B={k35:{bank:"ABB",taken:35000},k15:{bank:"ATB",taken:15000}};
+  plan.fixed.forEach(f=>{const b=B[f.key]; if(b&&!f.bank){f.bank=b.bank; if(b.taken&&!f.taken) f.taken=b.taken;}
+    if(f.key==="taksit"&&f.name==="Birbank taksit") f.name="Birkart taksit";});
+  plan.bankSeeded=true; lsSet("plan",plan);
+}
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{});
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -449,10 +550,29 @@ const WD=["Bazar","Bazar ertəsi","Çərşənbə axşamı","Çərşənbə","Cüm
 const catName=k=>(plan.cats.find(c=>c.key===k)||{name:k}).name;
 const sumAmt=list=>list.reduce((s,e)=>s+Number(e.amount||0),0);
 
+/* ---------- loan balances ----------
+   A routine payment can carry a debt {total, from:"YYYY-MM", left}: `left` is what was still owed at the
+   start of month `from`. Every ✓ from that month on takes one payment off, so the balance moves as you tick. */
+const rnd2=v=>Math.round(v*100)/100;
+const fmt0=n=>Math.round(n).toLocaleString("az-AZ");
+const prevKey=mk=>{const [y,m]=mk.split("-").map(Number);return m===1?`${y-1}-12`:`${y}-${pad(m-1)}`};
+function marksSince(f,from,upto){return Object.keys(paid).filter(k=>k>=from&&(!upto||k<=upto)&&paid[k]&&paid[k][f.key]).length}
+function debtLeft(f,upto){ if(!f.debt) return null;
+  return Math.max(0,rnd2(Number(f.debt.left||0)-marksSince(f,f.debt.from,upto)*Number(f.amount||0))); }
+function debtLeftBefore(f,mk){ if(!f.debt) return null; return mk<=f.debt.from?Number(f.debt.left||0):debtLeft(f,prevKey(mk)); }
+// what this payment asks for in month mk (the last loan payment can be smaller; 0 once the loan is closed)
+function varAmount(f,mk){
+  const k="amt_"+f.key, v=paid[mk]&&paid[mk][k]; if(v!=null) return Number(v)||0;
+  const prev=Object.keys(paid).filter(x=>x<mk&&paid[x]&&paid[x][k]!=null).sort().pop();
+  return prev?Number(paid[prev][k])||0:Number(f.amount||0);
+}
+function dueAmount(f,mk){const a=f.variable?varAmount(f,mk):Number(f.amount||0); if(!f.debt) return rnd2(a); return rnd2(Math.min(a,Math.max(0,debtLeftBefore(f,mk))));}
+const fixedTotalFor=mk=>rnd2(plan.fixed.reduce((t,f)=>t+dueAmount(f,mk),0));
+
 function monthStats(y,m){
   const mk=`${y}-${pad(m+1)}`;
   const monthExp=expenses.filter(e=>e.month===mk).sort((a,b)=>b.date.localeCompare(a.date)||(b.created||0)-(a.created||0));
-  const fixedTotal=plan.fixed.reduce((s,f)=>s+Number(f.amount||0),0);
+  const fixedTotal=fixedTotalFor(mk);
   const spent=sumAmt(monthExp);
   const daysIn=new Date(y,m+1,0).getDate();
   const isThis=y===now.getFullYear()&&m===now.getMonth();
@@ -489,9 +609,29 @@ function renderDay(){
   const [y,m,d]=dSel.split("-").map(Number);
   const isToday=dSel===TODAY;
   const dLabel=`${d} ${MONTHS[m-1]}`;
-  $("dname").innerHTML=`${dLabel}${y!==now.getFullYear()?" "+y:""} <span class="sub">· ${WD[new Date(y,m-1,d).getDay()]}</span>`;
-  $("dnext").disabled=isToday;
-  $("dToday").hidden=isToday;
+  // week strip: Monday–Sunday of the selected day's week; today always marked, future days locked
+  const sel=new Date(y,m-1,d); const ws=new Date(y,m-1,d-((sel.getDay()+6)%7));
+  const keyOf=dt=>`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+  const WDS=["B.e","Ç.a","Çər","C.a","Cüm","Şən","Baz"];
+  const we=new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+6);
+  $("dname").textContent=ws.getMonth()===we.getMonth()?`${MONTHS[ws.getMonth()]} ${ws.getFullYear()}`
+    :`${MONTHS[ws.getMonth()]} – ${MONTHS[we.getMonth()]} ${we.getFullYear()}`;
+  $("dnext").disabled=keyOf(we)>=TODAY;
+  const days7=[...Array(7)].map((_,i)=>{const dt=new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+i);
+    const k=keyOf(dt); return {i,dt,k,fut:k>TODAY,sp:sumAmt(expenses.filter(e=>e.date===k))}});
+  $("weekStrip").innerHTML=days7.map(({i,dt,k,fut})=>{
+    const cls=["wd",k===dSel?"sel":"",k===TODAY?"today":""].join(" ");
+    return `<button type="button" class="${cls}" data-d="${k}" role="tab" aria-selected="${k===dSel}" ${fut?"disabled":""}>
+      <span class="wdn">${k===TODAY?"Bu gün":WDS[i]}</span><span class="wdd">${dt.getDate()}</span></button>`;
+  }).join("");
+  // amounts live in their own row, separate from the date buttons
+  $("weekAmts").innerHTML=days7.map(({k,fut,sp})=>{
+    const cls=["wa",k===dSel?"sel":"",fut?"fut":"",sp?"":"zero"].join(" ");
+    return `<div class="${cls}">${fut?"":(sp?(sp>=100?Math.round(sp):Math.round(sp*10)/10):0)+" ₼"}</div>`;
+  }).join("");
+  // the whole week's spending (Monday–Sunday)
+  const wSum=rnd2(days7.reduce((t,x)=>t+x.sp,0)), thisWeek=days7.some(x=>x.k===TODAY);
+  $("weekTotal").innerHTML=`<span>${thisWeek?"Bu həftə xərclənib":"Həftənin cəmi"}<span class="sub"> · ${ws.getDate()} ${SHORT[ws.getMonth()]} – ${we.getDate()} ${SHORT[we.getMonth()]}</span></span><b>${fmt(wSum)} ₼</b>`;
   $("formTitle").textContent=isToday?"Bu günün xərcini yazın":`${dLabel} üçün xərc yazın`;
 
   const st=monthStats(now.getFullYear(),now.getMonth());
@@ -524,76 +664,26 @@ function renderMonth(){
   const st=monthStats(cur.y,cur.m);
   const {mk,monthExp,fixedTotal,spent,daysLeft,isThis,fundLeft,free,daily}=st;
 
-  // summary
-  $("sIncome").textContent=fmt(plan.income);
-  $("sFixed").textContent="− "+fmt(fixedTotal);
-  $("sFree").textContent=fmt(plan.income-fixedTotal);
-  $("sSpent").textContent="− "+fmt(spent);
-  $("sSpentSub").textContent=monthExp.length?`${monthExp.length} xərc yazılıb (aşağıda günlər üzrə)`:"hələ xərc yazılmayıb";
   const pm=paid[mk]||{};
-  const done=plan.fixed.filter(f=>pm[f.key]).length;
-  $("sFixedSub").textContent=`kreditlər, taksit, benzin, bağça, kommunal · ${done}/${plan.fixed.length} ödənilib`;
-  $("sFund").textContent="− "+fmt(fundLeft);
-  $("sLeft").textContent=fmt(free);
-  $("sLeft").style.color=free<0?"var(--bad)":free<200?"var(--warn)":"var(--ok)";
-  $("sLeftSub").textContent=free<0?"büdcə aşılıb, fonddan istifadə etməli olacaqsınız":`${daysLeft} günə bölünür → gündə ${fmt(Math.max(0,daily))} ₼`;
-  const inc=Math.max(plan.income,1);
-  const seg=[["fixed",fixedTotal,"Sabit"],["spent",spent,"Xərclənib"],["fund",fundLeft,"Fond"],["free",Math.max(0,free),"Sərbəst"]];
-  $("stackbar").innerHTML=seg.map(([k,v])=>v>0?`<span style="width:${Math.min(100,v/inc*100)}%;background:var(--c-${k})"></span>`:"").join("");
-  $("legend").innerHTML=seg.map(([k,v,n])=>`<span><i style="background:var(--c-${k})"></i>${n} <b class="num">${Math.round(v/inc*100)}%</b></span>`).join("");
-
-  // category bars
-  $("cats").innerHTML=plan.cats.map(c=>{
-    const s=sumAmt(monthExp.filter(e=>e.cat===c.key));
-    const pct=c.limit>0?s/c.limit:0;
-    const cls=pct>1?"bad":pct>.85?"warn":"";
-    const pill=pct>1?`<span class="pill bad">Limit aşılıb</span>`:pct>.85?`<span class="pill warn">Limitə yaxın</span>`:"";
-    return `<div class="cat"><div class="row"><span>${esc(c.name)} ${pill}</span><span class="num">${fmt(s)} / ${fmt(c.limit)}</span></div>
-      <div class="track"><div class="fill ${cls}" style="width:${Math.min(100,pct*100)}%"></div></div></div>`;
-  }).join("");
+  const done=plan.fixed.filter(f=>pm[f.key]&&dueAmount(f,mk)>0).length;
+  const actN=plan.fixed.filter(f=>dueAmount(f,mk)>0).length;
 
   // routine monthly payments
-  $("fixedProgress").textContent=`${done} / ${plan.fixed.length} ödənilib`;
-  const paidSum=plan.fixed.filter(f=>pm[f.key]).reduce((s,f)=>s+Number(f.amount||0),0);
+  $("fixedProgress").textContent=`${MONTHS[cur.m]}: ${done} / ${actN} ödənilib`;
+  const paidSum=rnd2(plan.fixed.filter(f=>pm[f.key]).reduce((s,f)=>s+dueAmount(f,mk),0));
   $("pTotal").textContent=fmt(fixedTotal);
   $("pPaid").textContent=fmt(paidSum);
   $("pDue").textContent=fmt(fixedTotal-paidSum);
   $("pDue").style.color=fixedTotal-paidSum>0?"var(--warn)":"var(--ok)";
   $("pBar").style.width=(fixedTotal>0?Math.min(100,paidSum/fixedTotal*100):0)+"%";
-  const today=now.getDate();
-  $("fixed").innerHTML=plan.fixed.map(f=>{
-    let pill="";
-    if(pm[f.key]) pill=`<span class="pill ok">ödənilib</span>`;
-    else if(f.day&&isThis&&today>f.day) pill=`<span class="pill bad">gecikib</span>`;
-    else if(f.day&&isThis&&f.day-today<=3) pill=`<span class="pill warn">${f.day===today?"bu gün":(f.day-today)+" gün qalıb"}</span>`;
-    const when=f.day?`${f.day} ${MONTHS[cur.m]}`:"ay ərzində";
-    return `<li class="${pm[f.key]?"done":""}">
-    <input type="checkbox" id="fx_${f.key}" data-k="${f.key}" ${pm[f.key]?"checked":""}>
-    <label class="grow" for="fx_${f.key}">${esc(f.name)}<div class="sub">${when}</div></label>
-    ${pill}<span class="num">${fmt(f.amount)}</span></li>`;}).join("");
+  renderPayGrid(cur.y,cur.m);
 
-  // month's expenses grouped by day
-  const days={}; monthExp.forEach(e=>{(days[e.date]=days[e.date]||[]).push(e)});
-  $("list").innerHTML=monthExp.length?Object.keys(days).sort().reverse().map(d=>{
-    const items=days[d]; const tot=sumAmt(items);
-    const [y,m,dd]=d.split("-").map(Number); const wd=WD[new Date(y,m-1,dd).getDay()];
-    const isOpen=openDays.has(d)||(!touchedDays.has(d)&&d===TODAY);
-    return `<details class="day" data-day="${d}" ${isOpen?"open":""}>
-      <summary><span class="chev" aria-hidden="true">›</span><span class="grow"><strong>${dd} ${MONTHS[m-1]}</strong> <span class="sub">${wd} · ${items.length} xərc</span></span>
-      <span class="num" style="font-weight:600">${fmt(tot)} ₼</span></summary>
-      <ul>${items.map(e=>`<li class="item">
-      <div class="grow"><div>${esc(e.note||catName(e.cat))}</div><div class="sub">${esc(catName(e.cat))}</div></div>
-      <span class="num">${fmt(e.amount)}</span>
-      <button class="x" data-del="${e.id}" aria-label="Sil">×</button></li>`).join("")}</ul></details>`;
-  }).join("")
-    :`<div class="empty">Bu ay hələ xərc yazılmayıb. "Gün" səhifəsindən əlavə edin.</div>`;
 }
 /* ---------- year view ---------- */
 let view="day", yCur=now.getFullYear();
 const SHORT=["Yan","Fev","Mar","Apr","May","İyn","İyl","Avq","Sen","Okt","Noy","Dek"];
 function renderYear(){
   $("yname").textContent=String(yCur);
-  const fixedTotal=plan.fixed.reduce((s,f)=>s+Number(f.amount||0),0);
   const limitTotal=plan.cats.reduce((s,c)=>s+Number(c.limit||0),0);
   const nowKey=now.getFullYear()*12+now.getMonth();
   const rows=[...Array(12)].map((_,m)=>{
@@ -604,8 +694,8 @@ function renderYear(){
     const active=!future&&(has||idx===nowKey);
     const byCat={}; ex.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amount);
     return {m,key,spent,future,active,isCur:idx===nowKey,
-      income:active?plan.income:0, fixed:active?fixedTotal:0,
-      left:active?plan.income-fixedTotal-spent:0, byCat};
+      income:active?plan.income:0, fixed:active?fixedTotalFor(key):0,
+      left:active?plan.income-fixedTotalFor(key)-spent:0, byCat};
   });
   const act=rows.filter(r=>r.active);
   const sum=k=>act.reduce((s,r)=>s+r[k],0);
@@ -648,30 +738,125 @@ function renderYear(){
       return `<tr><td>${esc(c.name)}</td>${tds}<td><strong>${Math.round(t)}</strong></td></tr>`;
     }).join("")+`</tbody>`;
 
-  // fixed payments, month by month
+  autoScroll();
+}
+/* ---------- credit card: grace-period debt per month, shown as a row in the payments table ----------
+   plan.card.months = {"YYYY-MM": {amount, due:"YYYY-MM-DD", paid}}. It is kept out of the budget totals:
+   card purchases are already written on the Day page, so paying the card back is not a second expense. */
+const amtTxt=a=>Number.isInteger(a)?a:Number(a).toFixed(2);
+function cardOpenGrace(){return rnd2(Object.values((plan.card&&plan.card.months)||{}).filter(x=>!x.paid).reduce((t,x)=>t+Number(x.amount||0),0))}
+function cardFree(){
+  const c=plan.card; if(!c) return 0;
+  const tf=plan.fixed.find(f=>f.key===c.taksit), tLeft=tf&&tf.debt?debtLeft(tf):0;
+  return rnd2(Number(c.limit||0)-cardOpenGrace()-tLeft);
+}
+async function togglePaid(mk,fk){
+  paid[mk]={...(paid[mk]||{}),[fk]:!(paid[mk]&&paid[mk][fk])};
+  render();
+  try{await savePaid(mk)}catch(x){toast("Yadda saxlanmadı")}
+}
+function cardRow(Y,focusM,tf,colPaid,firstData,nowKey){
+  const c=plan.card, mo=c.months||{};
+  let rowSum=0,rowN=0,paidT=0;
+  const tds=[...Array(12)].map((_,m)=>{
+    const key=`${Y}-${pad(m+1)}`, idx=Y*12+m;
+    const tDue=tf?dueAmount(tf,key):0, tOn=!!(tf&&paid[key]&&paid[key][tf.key]);
+    const tAmt=tOn&&tDue<=0?Number(tf.amount||0):tDue;
+    const g=mo[key], gAmt=g&&Number(g.amount)>0?Number(g.amount):0, gOn=!!(g&&g.paid);
+    const total=rnd2(tAmt+gAmt);
+    if(tOn){colPaid[m]+=tAmt; paidT+=tAmt; rowSum+=tAmt}
+    if(gAmt&&gOn) rowSum+=gAmt;
+    if((tOn||!tAmt)&&(gOn||!gAmt)&&(tOn||gOn)) rowN++;
+    let st,sym;
+    if(total<=0){st="empty";sym="+"}
+    else if((tOn||!tAmt)&&(gOn||!gAmt)){st="on";sym="✓"}
+    else if((tAmt&&!tOn&&key>=firstData&&idx<nowKey)||(gAmt&&!gOn&&g.due&&g.due<TODAY)){st="late";sym="!"}
+    else if(!gAmt&&key<firstData){st="pre";sym="·"}
+    else{st="open";sym="○"}
+    const parts=(tAmt?`<span class="pbk">Taksit ${fmt0(tAmt)}${tOn?" ✓":""}</span>`:"")+(gAmt?`<span class="pbk">Güzəşt ${fmt0(gAmt)}${gOn?" ✓":""}</span>`:"");
+    return `<td class="pc"><button type="button" class="pcell ${st} cardcell" data-card="${key}" aria-label="${esc(c.name||"Kart")}, ${MONTHS[m]}"><span class="pi">${sym}</span><span class="pv">${total>0?amtTxt(total)+" ₼":"yaz"}</span>${parts}</button></td>`;
+  }).join("");
+  const lim=Number(c.limit||0), tLeft=tf&&tf.debt?debtLeft(tf):0, open=cardOpenGrace(), free=cardFree();
+  const usedPct=lim>0?Math.min(100,Math.max(0,(lim-free)/lim*100)):0;
+  let pill="";
+  const next=Object.values(mo).filter(x=>!x.paid&&x.due&&Number(x.amount)>0).sort((a,b)=>a.due.localeCompare(b.due))[0];
+  if(next){const days=Math.round((Date.parse(next.due)-Date.parse(TODAY))/864e5);
+    if(days<0) pill=`<span class="pill bad">güzəşt gecikib</span>`;
+    else if(days<=3) pill=`<span class="pill warn">güzəşt: ${days===0?"bu gün":days+" gün qalıb"}</span>`;}
+  const html=`<tr class="gracerow"><td><b>${esc(c.name||"Kart")}</b><div class="sub">Limit: ${fmt0(lim)} ₼</div>
+    <div class="debt">${tf&&tf.debt?`<span>Taksit qalığı: <b>${fmt0(tLeft)} ₼</b></span>`:""}<span>Güzəşt borcu: <b>${fmt0(open)} ₼</b></span>
+    <span class="dfree">Boş limit: <b>${fmt0(free)} ₼</b></span>
+    <div class="dbar used" title="Limitin ${Math.round(usedPct)}%-i istifadədədir"><span style="width:${usedPct}%"></span></div></div>${pill}</td>${tds}
+    <td><strong>${fmt(rowSum)} ₼</strong><div class="sub">${rowN} ay</div></td></tr>`;
+  return {html,paidT};
+}
+
+/* ---------- routine payments grid (shown on the month page) ---------- */
+let payScrolled=null;
+function renderPayGrid(Y,focusM){
+  const nowKey=now.getFullYear()*12+now.getMonth();
   const curKey=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
   const firstData=[...expenses.map(e=>e.month),...Object.keys(paid).filter(k=>Object.values(paid[k]||{}).some(Boolean))].sort()[0]||curKey;
   const today=now.getDate();
   let paidYear=0; const colPaid=Array(12).fill(0);
   const prow=plan.fixed.map(f=>{
+    if(plan.card&&f.key===plan.card.taksit){const r=cardRow(Y,focusM,f,colPaid,firstData,nowKey); paidYear+=r.paidT; return r.html;}
     let rowSum=0,rowN=0;
     const tds=[...Array(12)].map((_,m)=>{
-      const key=`${yCur}-${pad(m+1)}`; const idx=yCur*12+m;
+      const key=`${Y}-${pad(m+1)}`; const idx=Y*12+m;
       const on=!!(paid[key]&&paid[key][f.key]);
+      const due=dueAmount(f,key);
+      const amt=on&&due<=0?Number(f.amount||0):due;
+      const amtTxt=Number.isInteger(amt)?amt:amt.toFixed(2);
+      const entered=!f.variable||(paid[key]&&paid[key]["amt_"+f.key]!=null);
       let st,sym;
-      if(on){st="on";sym="✓";rowSum+=Number(f.amount||0);rowN++;colPaid[m]+=Number(f.amount||0)}
+      if(on){st="on";sym="✓";rowSum+=amt;rowN++;colPaid[m]+=amt}
+      else if(f.variable&&amt<=0){st="empty";sym="+"}
+      else if(f.debt&&due<=0){st="fin";sym="—"}
       else if(key<firstData){st="pre";sym="·"}
       else if(idx<nowKey||(idx===nowKey&&f.day&&today>f.day)){st="late";sym="!"}
       else{st="open";sym="○"}
-      return `<td class="pc"><button type="button" class="pcell ${st}" data-pay="${key}|${f.key}" aria-label="${esc(f.name)}, ${MONTHS[m]}: ${on?"ödənilib":"ödənilməyib"}">${sym}</button></td>`;
+      return `<td class="pc"><button type="button" class="pcell ${st}" data-pay="${key}|${f.key}" ${st==="fin"?"disabled":""} aria-label="${esc(f.name)}, ${MONTHS[m]}: ${on?"ödənilib":st==="fin"?"borc bağlanıb":"ödənilməyib"}"><span class="pi">${sym}</span><span class="pv">${st==="fin"?"bitib":st==="empty"?"yaz":(entered?"":"≈")+amtTxt+" ₼"}</span></button></td>`;
     }).join("");
     paidYear+=rowSum;
-    return `<tr><td>${esc(f.name)}<div class="sub">${fmt(f.amount)} ₼${f.day?` · ayın ${f.day}-i`:""}</div></td>${tds}<td><strong>${fmt(rowSum)}</strong><div class="sub">${rowN} ay</div></td></tr>`;
+    let duePill="";
+    if(Y===now.getFullYear()&&focusM===now.getMonth()&&f.day&&dueAmount(f,`${Y}-${pad(focusM+1)}`)>0&&!(paid[`${Y}-${pad(focusM+1)}`]||{})[f.key]){
+      if(today>f.day) duePill=`<span class="pill bad">gecikib</span>`;
+      else if(f.day-today<=3) duePill=`<span class="pill warn">${f.day===today?"bu gün":(f.day-today)+" gün qalıb"}</span>`;
+    }
+    // compact label: bank (or the payment's name), how much was borrowed, what is left (drops with every ✓)
+    const title=f.bank||f.name;
+    const line2=f.bank?(f.taken?`Kredit: ${fmt0(f.taken)} ₼`:esc(f.name)):(f.group?esc(f.group):"");
+    let debtHtml="";
+    if(f.debt){
+      const rem=debtLeft(f);
+      const tot=Math.max(Number(f.debt.total||0),Number(f.debt.left||0),rem);
+      const pct=tot>0?Math.min(100,Math.max(0,(tot-rem)/tot*100)):0;
+      debtHtml=rem<=0?`<div class="debt"><span class="pill ok">Bağlanıb</span></div>`
+        :`<div class="debt"><span class="dleft">Qalıb: <b>${fmt0(rem)} ₼</b></span><div class="dbar" title="${Math.round(pct)}% ödənilib"><span style="width:${pct}%"></span></div></div>`;
+    }
+    return `<tr><td><b>${esc(title)}</b>${line2?`<div class="sub">${line2}</div>`:""}${debtHtml}${duePill}</td>${tds}<td><strong>${fmt(rowSum)} ₼</strong><div class="sub">${rowN} ay</div></td></tr>`;
   }).join("");
-  $("ptable").innerHTML=`<thead><tr><th>Ödəniş</th>${SHORT.map((s,i)=>`<th data-m="${i}" class="pc${isCurM(i)?" curm":""}">${s}</th>`).join("")}<th>Cəmi</th></tr></thead><tbody>${prow}`+
-    `<tr class="total"><td>Ödənilib</td>${colPaid.map(v=>`<td class="pc">${v?Math.round(v):'<span class="dim">·</span>'}</td>`).join("")}<td>${fmt(paidYear)}</td></tr></tbody>`;
-  $("yPaySub").textContent=`${yCur}: ${fmt(paidYear)} ₼ ödənilib`;
-  autoScroll();
+  $("ptable").innerHTML=`<thead><tr><th>Ödəniş</th>${SHORT.map((s,i)=>`<th data-m="${i}" class="pc${i===focusM?" curm":""}">${s}</th>`).join("")}<th>Cəmi</th></tr></thead><tbody>${prow}`+
+    (()=>{
+      const colDaily=[...Array(12)].map((_,m)=>rnd2(sumAmt(expenses.filter(e=>e.month===`${Y}-${pad(m+1)}`))));
+      const dailyYear=rnd2(colDaily.reduce((t,v)=>t+v,0));
+      const cell=v=>`<td class="pc">${v?fmt(v)+" ₼":'<span class="dim">0 ₼</span>'}</td>`;
+      return `<tr class="total"><td>Sabit ödənilib</td>${colPaid.map(cell).join("")}<td>${fmt(paidYear)} ₼</td></tr>`+
+        `<tr class="total"><td>Gündəlik xərclər</td>${colDaily.map(cell).join("")}<td>${fmt(dailyYear)} ₼</td></tr>`+
+        `<tr class="grand"><td>Ümumi xərc</td>${colPaid.map((v,m)=>cell(rnd2(v+colDaily[m]))).join("")}<td>${fmt(rnd2(paidYear+dailyYear))} ₼</td></tr></tbody>`;
+    })();
+  $("yPaySub").textContent=`${Y} ilində cəmi ${fmt(paidYear)} ₼ ödənilib.`;
+  // bring the viewed month into view once per month shown; afterwards keep the viewer's scroll
+  requestAnimationFrame(()=>{
+    const sc=$("pscroll"), key=Y+"-"+focusM;
+    if(payScrolled!==key&&sc.offsetParent){
+      payScrolled=key;
+      const th=sc.querySelector('thead th[data-m="'+focusM+'"]'), first=sc.querySelector("thead th");
+      if(th&&first) sc.scrollLeft=Math.max(0,th.offsetLeft-first.offsetWidth-th.offsetWidth);
+    }
+    updateHints();
+  });
 }
 const isCurM=i=>yCur===now.getFullYear()&&i===now.getMonth();
 let autoScrolled=null;
@@ -691,13 +876,13 @@ function autoScroll(){
   });
 }
 function updateHints(){
-  document.querySelectorAll("#yearView .tscroll").forEach(sc=>{
+  document.querySelectorAll(".tscroll").forEach(sc=>{
     let h=sc.nextElementSibling;
     if(!h||!h.classList.contains("scrollhint")){h=document.createElement("div");h.className="scrollhint";h.textContent="← cədvəli sağa-sola sürüşdürün →";sc.after(h)}
     h.hidden=sc.scrollWidth<=sc.clientWidth+2;
   });
 }
-window.addEventListener("resize",()=>{if(view==="year") updateHints()});
+window.addEventListener("resize",()=>updateHints());
 /* ---------- backup, restore, Excel ---------- */
 let XLSXP=null;
 function updBackup(){
@@ -738,8 +923,8 @@ function buildWorkbook(X){
   const months=[...new Set([...expenses.map(e=>e.month),...Object.keys(paid).filter(k=>Object.values(paid[k]||{}).some(Boolean))])].sort();
   const r2=[["Ay","Gəlir","Sabit ödənişlər","Ödənilmiş sabit","Gündəlik xərclər","Qalıq"],
     ...months.map(mk=>{const sp=sumAmt(expenses.filter(e=>e.month===mk));const pm=paid[mk]||{};
-      const pd=plan.fixed.filter(f=>pm[f.key]).reduce((t,f)=>t+Number(f.amount||0),0);
-      return [mLabel(mk),plan.income,r2d(fixedTotal),r2d(pd),r2d(sp),r2d(plan.income-fixedTotal-sp)]})];
+      const pd=plan.fixed.filter(f=>pm[f.key]).reduce((t,f)=>t+dueAmount(f,mk),0); const ft=fixedTotalFor(mk);
+      return [mLabel(mk),plan.income,r2d(ft),r2d(pd),r2d(sp),r2d(plan.income-ft-sp)]})];
   const w2=X.utils.aoa_to_sheet(r2); money(w2,["B","C","D","E","F"],2,r2.length);
   w2["!cols"]=[{wch:15},{wch:11},{wch:15},{wch:15},{wch:16},{wch:11}];
   X.utils.book_append_sheet(wb,w2,"Aylar");
@@ -751,10 +936,11 @@ function buildWorkbook(X){
   money(w3,[...Array(plan.cats.length+1)].map((_,i)=>X.utils.encode_col(i+1)),2,r3.length);
   w3["!cols"]=[{wch:15},...plan.cats.map(c=>({wch:Math.max(11,Math.min(26,c.name.length+2))})),{wch:11}];
   X.utils.book_append_sheet(wb,w3,"Kateqoriyalar");
-  const r4=[["Ödəniş","Məbləğ (₼)","Ödəniş günü",...months.map(mLabel)],
-    ...plan.fixed.map(f=>[f.name,Number(f.amount||0),f.day?`ayın ${f.day}-i`:"",...months.map(mk=>(paid[mk]&&paid[mk][f.key])?"✓":"")])];
-  const w4=X.utils.aoa_to_sheet(r4); money(w4,["B"],2,r4.length);
-  w4["!cols"]=[{wch:30},{wch:12},{wch:12},...months.map(()=>({wch:14}))];
+  const r4=[["Ödəniş","Bank","Götürülən kredit (₼)","Aylıq (₼)","Ödəniş günü","Qalan borc (₼)",...months.map(mLabel)],
+    ...plan.fixed.map(f=>[f.name,f.bank||"",f.taken||"",Number(f.amount||0),f.day?`ayın ${f.day}-i`:"",f.debt?debtLeft(f):"",
+      ...months.map(mk=>(paid[mk]&&paid[mk][f.key])?"✓":"")])];
+  const w4=X.utils.aoa_to_sheet(r4); money(w4,["C","D","F"],2,r4.length);
+  w4["!cols"]=[{wch:30},{wch:14},{wch:18},{wch:11},{wch:12},{wch:15},...months.map(()=>({wch:14}))];
   X.utils.book_append_sheet(wb,w4,"Sabit ödənişlər");
   return wb;
 }
@@ -784,7 +970,7 @@ $("restoreFile").onchange=async ev=>{
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast("Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc fayldakı ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return;
-  plan=d.plan; paid=d.paid||{};
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount)}));
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
@@ -808,6 +994,7 @@ function setView(v){
   $("tabYear").setAttribute("aria-selected",v==="year");
   $("eyebrow").textContent=v==="day"?"Gündəlik xərclər":v==="month"?"Aylıq büdcə":"İllik baxış";
   updBackup();
+  if(v==="month"){payScrolled=null; renderMonth();}
   if(v==="year"){autoScrolled=null; renderYear();}
 }
 function goMonth(m){cur={y:yCur,m:Number(m)};render();setView("month");window.scrollTo(0,0)}
@@ -816,8 +1003,17 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 
 function fillSettings(){
   let h=`<label for="setIncome">Aylıq gəlir</label><input id="setIncome" type="number" step="0.01" value="${plan.income}">`;
+  if(plan.card) h+=`<label for="setCardLimit">${esc(plan.card.name||"Kart")} limiti</label><input id="setCardLimit" type="number" step="1" value="${plan.card.limit||0}">`;
   h+=`<div class="label" style="grid-column:1/-1;margin-top:6px">Sabit ödənişlər</div>`;
-  plan.fixed.forEach(f=>{h+=`<label for="sf_${f.key}">${esc(f.name)}</label><input id="sf_${f.key}" type="number" step="0.01" value="${f.amount}">`});
+  h+=`<div class="sub" style="grid-column:1/-1">Kredit deyilsə, bank və borc xanalarını boş qoyun.</div>`;
+  plan.fixed.forEach(f=>{const k=f.key, dl=debtLeft(f);
+    if(f.variable){h+=`<div class="sethead">${esc(f.name)}</div>
+    <label for="sf_${k}">Təxmini aylıq məbləğ, ₼</label><input id="sf_${k}" type="number" step="0.01" value="${f.amount||""}" placeholder="0">`; return;}
+    h+=`<div class="sethead">${esc(f.name)}</div>
+    <label for="sf_${k}">Aylıq ödəniş, ₼</label><input id="sf_${k}" type="number" step="0.01" value="${f.amount}">
+    <label for="sb_${k}">Bank</label><input id="sb_${k}" type="text" placeholder="—" value="${esc(f.bank||"")}">
+    <label for="st_${k}">Götürülən kredit, ₼</label><input id="st_${k}" type="number" step="1" placeholder="—" value="${f.taken||""}">
+    <label for="sd_${k}">Qalan borc, ₼</label><input id="sd_${k}" type="number" step="0.01" placeholder="—" value="${dl===null?"":dl}">`;});
   h+=`<div class="label" style="grid-column:1/-1;margin-top:6px">Kateqoriya limitləri</div>`;
   plan.cats.forEach(c=>{h+=`<label for="sc_${c.key}">${esc(c.name)}</label><input id="sc_${c.key}" type="number" step="1" value="${c.limit}">`});
   $("settings").innerHTML=h;
@@ -846,16 +1042,13 @@ function shiftDay(n){
   if(dSel>TODAY) dSel=TODAY;
   renderDay();
 }
-$("dprev").onclick=()=>shiftDay(-1);
-$("dnext").onclick=()=>shiftDay(1);
-$("dToday").onclick=()=>{dSel=TODAY;renderDay()};
+$("dprev").onclick=()=>shiftDay(-7);
+$("dnext").onclick=()=>shiftDay(7);
+$("weekStrip").addEventListener("click",ev=>{
+  const b=ev.target.closest(".wd"); if(!b||b.disabled) return;
+  dSel=b.dataset.d; renderDay();
+});
 $("goMonthBtn").onclick=()=>{cur={y:now.getFullYear(),m:now.getMonth()};renderMonth();setView("month");window.scrollTo(0,0)};
-$("list").addEventListener("toggle",ev=>{
-  const d=ev.target.dataset&&ev.target.dataset.day; if(!d) return;
-  touchedDays.add(d); ev.target.open?openDays.add(d):openDays.delete(d);
-},true);
-function setAll(open){document.querySelectorAll("#list details.day").forEach(el=>{
-  const d=el.dataset.day; touchedDays.add(d); open?openDays.add(d):openDays.delete(d); el.open=open;})}
 function pickNote(o){
   $("fNote").value=o.text;
   if(plan.cats.some(c=>c.key===o.cat)) $("fCat").value=o.cat;
@@ -885,17 +1078,27 @@ $("noteSugg").addEventListener("click",ev=>{
   const b=ev.target.closest(".sitem"); if(!b) return;
   const o=noteIndex[b.dataset.k]; if(o) pickNote(o);
 });
-$("openAll").onclick=()=>setAll(true);
-$("closeAll").onclick=()=>setAll(false);
-$("fixed").addEventListener("change",async ev=>{
-  const k=ev.target.dataset.k; if(!k) return;
-  const mk=mKey(); paid[mk]={...(paid[mk]||{}),[k]:ev.target.checked}; render();
-  try{await savePaid(mk)}catch(x){toast("Yadda saxlanmadı")}
-});
 $("saveSettings").onclick=async()=>{
   const p=structuredClone(plan);
   p.income=parseFloat($("setIncome").value)||0;
-  p.fixed.forEach(f=>f.amount=parseFloat($("sf_"+f.key).value)||0);
+  if(p.card&&$("setCardLimit")) p.card.limit=parseFloat($("setCardLimit").value)||0;
+  p.fixed.forEach(f=>{
+    f.amount=parseFloat($("sf_"+f.key).value)||0;
+    if(!$("sb_"+f.key)) return;
+    const bank=$("sb_"+f.key).value.trim(); if(bank) f.bank=bank; else delete f.bank;
+    const taken=parseFloat($("st_"+f.key).value); if(taken>0) f.taken=taken; else delete f.taken;
+  });
+  // a typed balance means "this is what I owe right now"; re-anchor it to this month so later ✓ keep counting down
+  const curK=TODAY.slice(0,7);
+  p.fixed.forEach(f=>{
+    if(!$("sd_"+f.key)) return;
+    const v=$("sd_"+f.key).value.trim();
+    if(v===""){delete f.debt; return}
+    const now_=parseFloat(v); if(!(now_>=0)) return;
+    const ticks=Object.keys(paid).filter(k=>k>=curK&&paid[k]&&paid[k][f.key]).length;
+    const total=Math.max(Number((f.debt&&f.debt.total)||0),now_);
+    f.debt={total,from:curK,left:rnd2(now_+ticks*Number(f.amount||0))};
+  });
   p.cats.forEach(c=>c.limit=parseFloat($("sc_"+c.key).value)||0);
   plan=p; render();
   try{await savePlan(); toast("Yadda saxlanıldı")}catch(x){toast("Yadda saxlanmadı")}
@@ -903,12 +1106,60 @@ $("saveSettings").onclick=async()=>{
 $("tabDay").onclick=()=>setView("day");
 $("tabMonth").onclick=()=>setView("month");
 $("ptable").addEventListener("click",async ev=>{
-  const b=ev.target.closest(".pcell"); if(!b) return;
+  const cb=ev.target.closest("[data-card]"); if(cb){openGrace(cb.dataset.card); return;}
+  const b=ev.target.closest(".pcell"); if(!b||!b.dataset.pay) return;
   const [key,fk]=b.dataset.pay.split("|");
-  paid[key]={...(paid[key]||{}),[fk]:!(paid[key]&&paid[key][fk])};
-  render();
-  try{await savePaid(key)}catch(x){toast("Yadda saxlanmadı")}
+  const f=plan.fixed.find(x=>x.key===fk);
+  if(f&&f.variable){openBill(key,f); return;}
+  togglePaid(key,fk);
 });
+// one sheet per month for the card: tick the instalment, write/tick the grace debt
+let gsKey=null;
+function openGrace(key){
+  if(!plan.card) return; gsKey=key;
+  const c=plan.card, g=(c.months||{})[key]||{}, [y,m]=key.split("-").map(Number);
+  const tf=plan.fixed.find(f=>f.key===c.taksit), tDue=tf?dueAmount(tf,key):0, tOn=!!(tf&&paid[key]&&paid[key][tf.key]);
+  $("gsTitle").textContent=`${c.name||"Kart"} · ${MONTHS[m-1]} ${y}`;
+  $("gsTPart").hidden=!tf||(tDue<=0&&!tOn);
+  $("gsTTxt").textContent=`${tf?fmt(tDue||tf.amount):0} ₼ ödənilib`;
+  $("gsTPaid").checked=tOn;
+  $("gsAmount").value=g.amount||""; $("gsDue").value=g.due||""; $("gsPaid").checked=!!g.paid;
+  $("graceSheet").hidden=false;
+}
+function closeGrace(){$("graceSheet").hidden=true; gsKey=null}
+$("gsForm").addEventListener("submit",async ev=>{
+  ev.preventDefault(); if(!gsKey||!plan.card) return;
+  const key=gsKey, c=plan.card, tf=plan.fixed.find(f=>f.key===c.taksit);
+  let paidChanged=false;
+  if(tf&&!$("gsTPart").hidden){const want=$("gsTPaid").checked, was=!!(paid[key]&&paid[key][tf.key]);
+    if(want!==was){paid[key]={...(paid[key]||{}),[tf.key]:want}; paidChanged=true;}}
+  const a=parseFloat($("gsAmount").value), mo={...(c.months||{})};
+  if(a>0) mo[key]={amount:rnd2(a),due:$("gsDue").value||"",paid:$("gsPaid").checked}; else delete mo[key];
+  c.months=mo; closeGrace(); render();
+  try{ if(paidChanged) await savePaid(key); await savePlan(); toast("Yadda saxlanıldı") }catch(x){toast("Yadda saxlanmadı")}
+});
+$("gsClose").onclick=closeGrace;
+// bills that change every month (gas, water, electricity…): write this month's amount, tick when paid
+let bsKey=null,bsF=null;
+function openBill(mk,f){
+  bsKey=mk; bsF=f.key; const [y,m]=mk.split("-").map(Number);
+  $("bsTitle").textContent=`${f.name} · ${MONTHS[m-1]} ${y}`;
+  const v=paid[mk]&&paid[mk]["amt_"+f.key];
+  $("bsAmount").value=v!=null?v:(varAmount(f,mk)||"");
+  $("bsPaid").checked=!!(paid[mk]&&paid[mk][f.key]);
+  $("billSheet").hidden=false;
+}
+function closeBill(){$("billSheet").hidden=true; bsKey=null; bsF=null}
+$("bsForm").addEventListener("submit",async ev=>{
+  ev.preventDefault(); if(!bsKey) return;
+  const mk=bsKey, fk=bsF, a=parseFloat($("bsAmount").value);
+  paid[mk]={...(paid[mk]||{}),["amt_"+fk]:a>0?rnd2(a):0,[fk]:$("bsPaid").checked&&a>0};
+  closeBill(); render();
+  try{await savePaid(mk); toast("Yadda saxlanıldı")}catch(x){toast("Yadda saxlanmadı")}
+});
+$("bsClose").onclick=closeBill;
+$("billSheet").addEventListener("click",ev=>{if(ev.target.id==="billSheet") closeBill()});
+$("graceSheet").addEventListener("click",ev=>{if(ev.target.id==="graceSheet") closeGrace()});
 $("tabYear").onclick=()=>{yCur=cur.y;setView("year")};
 $("yprev").onclick=()=>{yCur--;renderYear()};
 $("ynext").onclick=()=>{yCur++;renderYear()};
