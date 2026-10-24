@@ -142,6 +142,8 @@ details summary{cursor:pointer;font-weight:600}
 .wd:disabled{opacity:.35;cursor:default}
 .wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.ghbox{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.ghform{display:grid;grid-template-columns:1fr;gap:8px}
 .installbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;font-weight:600}
 .welcome{border-color:var(--accent)}
 .pill{display:inline-block;white-space:nowrap}
@@ -392,6 +394,20 @@ details summary{cursor:pointer;font-weight:600}
     </div>
     <input type="file" id="restoreFile" accept=".json,application/json" hidden>
     <div class="note" id="lastExport"></div>
+    <div class="ghbox">
+      <div class="label">GitHub-a avtomatik ehtiyat · ayda bir dəfə</div>
+      <div class="note" id="ghStatus">Qoşulmayıb.</div>
+      <div class="ghform" id="ghForm">
+        <div class="field"><label class="label" for="ghRepo">Gizli (Private) repo</label><input id="ghRepo" type="text" placeholder="Maliko92/budce-ehtiyat" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="field"><label class="label" for="ghToken">Token</label><input id="ghToken" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false"></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" id="ghConnect" type="button">Qoş və yoxla</button>
+        <button class="btn" id="ghNow" type="button" hidden>İndi GitHub-a saxla</button>
+        <button class="btn" id="ghRestoreBtn" type="button" hidden>GitHub-dan bərpa et</button>
+        <button class="btn" id="ghOff" type="button" hidden>Ayır</button>
+      </div>
+    </div>
   </section>
   <div class="note" id="status" style="text-align:center">Yüklənir…</div>
 </div>
@@ -540,7 +556,8 @@ async function boot(){
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
   $("welcome").hidden=!!seen||expenses.length>0;
-  render(); fillSettings(); updBackup();
+  render(); fillSettings(); updBackup(); updGh();
+  setTimeout(ghAuto,1500);
 }
 
 /* ---------- render ---------- */
@@ -963,20 +980,91 @@ function pickRestore(){$("restoreFile").click()}
 $("restoreBtn").onclick=pickRestore;
 $("welcomeRestore").onclick=pickRestore;
 $("welcomeSkip").onclick=()=>{$("welcome").hidden=true; try{localStorage.setItem("welcomeDone","1")}catch(e){}};
-$("restoreFile").onchange=async ev=>{
-  const f=ev.target.files&&ev.target.files[0]; ev.target.value=""; if(!f) return;
-  let d;
-  try{d=JSON.parse(await f.text())}catch(e){d=null}
+function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
-    toast("Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return;}
-  if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc fayldakı ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return;
+    toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
+  if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
   plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount)}));
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
   $("welcome").hidden=true;
-  render(); fillSettings(); toast(`${expenses.length} xərc köçürüldü`);
+  render(); fillSettings(); toast(`${expenses.length} xərc bərpa olundu`);
+  return true;
+}
+$("restoreFile").onchange=async ev=>{
+  const f=ev.target.files&&ev.target.files[0]; ev.target.value=""; if(!f) return;
+  let d; try{d=JSON.parse(await f.text())}catch(e){d=null}
+  applyBackup(d,"file");
 };
+
+/* ---------- GitHub backup: once a month the whole data set goes to a PRIVATE repo of yours ----------
+   The token stays only on this phone (never inside backups or exports). One file per month:
+   backups/aile-budcesi-YYYY-MM.json (a manual save in the same month overwrites it). */
+const GH_KEY="ghBackup";
+const ghCfg=()=>lsGet(GH_KEY,null);
+const ghSet=c=>{try{c?localStorage.setItem(GH_KEY,JSON.stringify(c)):localStorage.removeItem(GH_KEY)}catch(e){}};
+function b64(str){const by=new TextEncoder().encode(str);let bin="";for(let i=0;i<by.length;i+=0x8000)bin+=String.fromCharCode.apply(null,by.subarray(i,i+0x8000));return btoa(bin)}
+function unb64(b){const bin=atob(String(b).replace(/\s/g,""));return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)))}
+async function gh(cfg,path,opt={}){
+  const r=await fetch(`https://api.github.com/repos/${cfg.repo}${path?"/"+path:""}`,{...opt,cache:"no-store",
+    headers:{"Authorization":"Bearer "+cfg.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28",...(opt.body?{"Content-Type":"application/json"}:{})}});
+  if(!r.ok){const e=new Error("gh "+r.status); e.status=r.status; throw e;}
+  return r.status===204?null:r.json();
+}
+function ghErr(e){return e&&e.status===401?"token yanlışdır və ya vaxtı bitib":e&&e.status===404?"repo tapılmadı və ya tokenin ona icazəsi yoxdur":e&&(e.status===403||e.status===422)?"tokenin yazma icazəsi yoxdur":"internet yoxdur və ya GitHub cavab vermədi"}
+async function ghBackup(cfg){
+  const mk=TODAY.slice(0,7), path=`backups/aile-budcesi-${mk}.json`;
+  const data={app:"aile-budcesi",version:1,exported:new Date().toISOString(),plan,expenses,paid};
+  let sha; try{sha=(await gh(cfg,"contents/"+path)).sha}catch(e){if(e.status!==404) throw e}
+  await gh(cfg,"contents/"+path,{method:"PUT",body:JSON.stringify({message:`Ehtiyat nüsxə: ${mk}`,content:b64(JSON.stringify(data)),...(sha?{sha}:{})})});
+  cfg.last=TODAY; cfg.lastPath=path; ghSet(cfg);
+  try{localStorage.setItem("lastBackup",TODAY)}catch(e){}
+  updBackup(); updGh();
+}
+function updGh(){
+  const c=ghCfg(), on=!!(c&&c.repo&&c.token);
+  $("ghForm").hidden=on; $("ghConnect").hidden=on;
+  $("ghNow").hidden=!on; $("ghRestoreBtn").hidden=!on; $("ghOff").hidden=!on;
+  if(!on){$("ghStatus").textContent="Qoşulmayıb. Gizli repo və token yazın, sonra hər ayın ilk açılışında məlumatlar özü GitHub-a saxlanacaq."; return;}
+  const d=c.last?c.last.split("-").reverse().join("."):null;
+  $("ghStatus").textContent=`Qoşulub: ${c.repo}`+(d?` · son ehtiyat: ${d}`:" · hələ ehtiyat saxlanmayıb");
+}
+$("ghConnect").onclick=async()=>{
+  const repo=$("ghRepo").value.trim().replace(/^https?:\/\/github\.com\//,"").replace(/\.git$/,"").replace(/\/+$/,"");
+  const token=$("ghToken").value.trim();
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)||!token){toast("Repo (ad/repo) və tokeni yazın"); return;}
+  const cfg={repo,token}, btn=$("ghConnect"); btn.disabled=true; btn.textContent="Yoxlanılır…";
+  try{
+    const info=await gh(cfg,"");
+    if(!info.private){toast("Bu repo açıqdır (Public). Maliyyə məlumatları üçün Private repo seçin"); return;}
+    ghSet(cfg); await ghBackup(cfg); $("ghToken").value=""; toast("Qoşuldu, ilk ehtiyat GitHub-a saxlanıldı");
+  }catch(e){toast("Qoşulmadı: "+ghErr(e))}
+  finally{btn.disabled=false; btn.textContent="Qoş və yoxla"; updGh()}
+};
+$("ghNow").onclick=async()=>{
+  const c=ghCfg(); if(!c) return; const btn=$("ghNow"); btn.disabled=true;
+  try{await ghBackup(c); toast("GitHub-a saxlanıldı")}catch(e){toast("Saxlanmadı: "+ghErr(e))}
+  finally{btn.disabled=false}
+};
+$("ghRestoreBtn").onclick=async()=>{
+  const c=ghCfg(); if(!c) return;
+  try{
+    const list=(await gh(c,"contents/backups")).filter(x=>/^aile-budcesi-\d{4}-\d{2}\.json$/.test(x.name)).sort((a,b)=>a.name.localeCompare(b.name));
+    if(!list.length){toast("GitHub-da ehtiyat nüsxə yoxdur"); return;}
+    const f=await gh(c,"contents/"+list[list.length-1].path);
+    applyBackup(JSON.parse(unb64(f.content)),"gh");
+  }catch(e){toast("Bərpa olunmadı: "+ghErr(e))}
+};
+$("ghOff").onclick=()=>{ if(!confirm("GitHub ehtiyatı ayrılsın? Token bu telefondan silinəcək, GitHub-dakı fayllar qalır.")) return; ghSet(null); updGh(); toast("Ayrıldı"); };
+// first open of a new month → save silently
+async function ghAuto(){
+  const c=ghCfg(); if(!c||!c.repo||!c.token) return;
+  if(c.last&&c.last.slice(0,7)===TODAY.slice(0,7)) return;
+  if(navigator.onLine===false) return;
+  try{await ghBackup(c); toast("Aylıq ehtiyat GitHub-a saxlanıldı")}
+  catch(e){$("ghStatus").textContent=`Qoşulub: ${c.repo} · avtomatik ehtiyat alınmadı (${ghErr(e)}), növbəti açılışda yenə cəhd ediləcək`}
+}
 
 /* ---------- install as an app ---------- */
 let installEvt=null;
