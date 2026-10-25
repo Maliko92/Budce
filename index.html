@@ -142,18 +142,16 @@ details summary{cursor:pointer;font-weight:600}
 .wd:disabled{opacity:.35;cursor:default}
 .wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
-.stmt li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:.94rem}
-.stmt li:first-child{border-top:0}
-.stmt .v{font-weight:600;white-space:nowrap;text-align:right}
-.stmt .nm{min-width:0}
-.stmt .nm small{display:block;font-size:.76rem;color:var(--muted);margin-top:1px}
-.stmt li.part{border-top:0;padding:2px 0 4px 14px;font-size:.84rem;color:var(--muted)}
-.stmt li.part .v{font-weight:400}
-.stmt li.tot{border-top:2px solid var(--line);padding-top:10px}
-.stmt li.tot .nm{font-weight:600}
-.stmt li.tot .v{font-size:1.08rem}
-.stmt .dim{color:var(--muted);font-weight:400}
-.stmthead{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px}
+.hero4{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+@media (min-width:640px){.hero4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.debtlist li{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:.9rem}
+.debtlist li:first-child{border-top:0}
+.debtlist .num{font-weight:600}
+.debtlist .dim{color:var(--muted);font-weight:400}
+.incrow{display:flex;align-items:center;gap:10px}
+.incrow label{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.incrow input{width:118px;flex:none;font-family:var(--f-num);font-size:1rem;text-align:right}
+.incrow .sub.ok{color:var(--ok)} .incrow .sub.warn{color:var(--warn)}
 .mplist li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--line);cursor:pointer;font-size:.92rem}
 .mpsum{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
 .mpsum b{color:var(--fg);font-family:var(--f-num)}
@@ -203,7 +201,7 @@ details summary{cursor:pointer;font-weight:600}
 .installbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;font-weight:600}
 .welcome{border-color:var(--accent)}
 .pill{display:inline-block;white-space:nowrap}
-@media (max-width:440px){.dbig{font-size:1.4rem}.hero3 .big{font-size:1.15rem}.dcard{padding:10px 12px}}
+@media (max-width:440px){.dbig{font-size:1.4rem}.hero3 .big{font-size:1.15rem}.hero4 .big{font-size:1.35rem}.dcard{padding:10px 12px}}
 .month{justify-content:center}
 .tabs{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
 .tab{background:none;border:0;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;color:var(--muted)}
@@ -369,6 +367,13 @@ details summary{cursor:pointer;font-weight:600}
 
   <!-- AY -->
   <div class="view" id="monthView" hidden>
+  <section class="panel" aria-label="Ayın gəliri">
+    <form class="incrow" id="incForm">
+      <label for="incAmount"><b id="incTitle">Gəlir</b><span class="sub" id="incSub"></span></label>
+      <input id="incAmount" type="number" inputmode="decimal" step="0.01" min="0">
+      <button class="btn primary" type="submit">Yaz</button>
+    </form>
+  </section>
 
 
   <section class="panel" aria-label="Bu ayın sabit ödənişləri">
@@ -405,10 +410,13 @@ details summary{cursor:pointer;font-weight:600}
   <!-- İL -->
   <div class="view" id="yearView" hidden>
     <section class="panel" aria-label="İllik xülasə">
-      <div class="top"><h2>İllik xülasə</h2><span class="sub" id="yMonths"></span></div>
-      <ul class="stmt" id="yFlow"></ul>
-      <div class="stmthead"><span class="label">Borc qalığı</span><span class="sub">bu gün</span></div>
-      <ul class="stmt" id="yDebts"></ul>
+      <div class="hero hero4">
+        <div><div class="label">Ümumi gəlir</div><div class="big num" id="yIncome">0</div></div>
+        <div><div class="label">Ümumi xərc</div><div class="big num" id="ySpent">0</div></div>
+        <div><div class="label">Qalıq</div><div class="big num" id="yLeft">0</div></div>
+        <div><div class="label">Borclar</div><div class="big num" id="yDebt">0</div></div>
+      </div>
+      <ul class="debtlist" id="yDebtList"></ul>
     </section>
 
     <section class="panel" aria-label="Aylar üzrə xərclər">
@@ -694,6 +702,9 @@ function varAmount(f,mk){
   return prev?Number(paid[prev][k])||0:Number(f.amount||0);
 }
 function dueAmount(f,mk){const a=f.variable?varAmount(f,mk):Number(f.amount||0); if(!f.debt) return rnd2(a); return rnd2(Math.min(a,Math.max(0,debtLeftBefore(f,mk))));}
+// salary written for month mk (paid[mk].income); until it is written, the usual income from settings counts
+const incomeSet=mk=>!!(paid[mk]&&paid[mk].income!=null);
+const incomeFor=mk=>incomeSet(mk)?Number(paid[mk].income)||0:Number(plan.income||0);
 const fixedTotalFor=mk=>rnd2(plan.fixed.reduce((t,f)=>t+dueAmount(f,mk),0));
 
 function monthStats(y,m){
@@ -706,7 +717,7 @@ function monthStats(y,m){
   const daysLeft=isThis?daysIn-now.getDate()+1:daysIn;
   const fund=(plan.cats.find(c=>c.key==="fond")||{limit:0});
   const fundLeft=Math.max(0,fund.limit-sumAmt(monthExp.filter(e=>e.cat==="fond")));
-  const free=plan.income-fixedTotal-spent-fundLeft;
+  const free=incomeFor(mk)-fixedTotal-spent-fundLeft;
   return {mk,monthExp,fixedTotal,spent,daysLeft,isThis,fundLeft,free,daily:free/daysLeft};
 }
 
@@ -778,11 +789,29 @@ function renderMonth(){
   const st=monthStats(cur.y,cur.m);
   const {mk,monthExp,fixedTotal,spent,daysLeft,isThis,fundLeft,free,daily}=st;
 
+  renderIncome(mk);
   renderMonthPay();
   renderWeeks(cur.y,cur.m,monthExp);
   renderCatReport("m",monthExp,`${MONTHS[cur.m]} ${cur.y}`);
 
 }
+function renderIncome(mk){
+  const [y,m]=mk.split("-").map(Number), set=incomeSet(mk), inp=$("incAmount");
+  $("incTitle").textContent=`${MONTHS[m-1]} gəliri`;
+  const sub=$("incSub"), thisM=mk===TODAY.slice(0,7);
+  sub.className="sub"+(set?" ok":thisM?" warn":"");
+  sub.textContent=set?"yazılıb":thisM?"maaş gələndə yazın":"yazılmayıb";
+  inp.placeholder=fmt0(plan.income);
+  if(document.activeElement!==inp||inp.dataset.mk!==mk){inp.value=set?paid[mk].income:""; inp.dataset.mk=mk;}
+}
+$("incForm").addEventListener("submit",async ev=>{
+  ev.preventDefault();
+  const inp=$("incAmount"), mk=inp.dataset.mk||mKey(), v=inp.value.trim();
+  const pm={...(paid[mk]||{})};
+  if(v===""){delete pm.income} else {const a=rnd2(parseFloat(v)); if(!(a>=0)){toast("Məbləği yazın"); return;} pm.income=a;}
+  paid[mk]=pm; inp.blur(); render();
+  try{await savePaid(mk); toast(v===""?"Gəlir silindi":"Gəlir yazıldı")}catch(x){toast("Yadda saxlanmadı")}
+});
 /* ---------- this month's routine payments: a short checklist; ticks are the same data as the year table ---------- */
 function firstDataKey(){
   return [...expenses.map(e=>e.month),...Object.keys(paid).filter(k=>Object.values(paid[k]||{}).some(Boolean))].sort()[0]||TODAY.slice(0,7);
@@ -923,11 +952,11 @@ function renderYear(){
     const ex=expenses.filter(e=>e.month===key);
     const spent=ex.reduce((s,e)=>s+Number(e.amount||0),0);
     const idx=yCur*12+m; const future=idx>nowKey; const has=ex.length>0;
-    const active=!future&&(has||idx===nowKey);
+    const active=!future&&(has||idx===nowKey||incomeSet(key));
     const byCat={}; ex.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amount);
     return {m,key,spent,future,active,isCur:idx===nowKey,
-      income:active?plan.income:0, fixed:active?fixedTotalFor(key):0,
-      left:active?plan.income-fixedTotalFor(key)-spent:0, byCat};
+      income:active?incomeFor(key):0, fixed:active?fixedTotalFor(key):0,
+      left:active?incomeFor(key)-fixedTotalFor(key)-spent:0, byCat};
   });
   const act=rows.filter(r=>r.active);
   const sum=k=>act.reduce((s,r)=>s+r[k],0);
@@ -937,31 +966,21 @@ function renderYear(){
   const fixedPaid=rnd2(rows.reduce((t,r)=>t+paidFixedFor(r.key),0));
   const daily=rnd2(rows.reduce((t,r)=>t+r.spent,0));
   const spentAll=rnd2(fixedPaid+daily);
-  const row=(name,val,cls="",note="",color="")=>`<li${cls?` class="${cls}"`:""}><span class="nm">${name}${note?`<small>${note}</small>`:""}</span><span class="num v"${color?` style="color:${color}"`:""}>${val}</span></li>`;
   const leftY=rnd2(income-spentAll);
-  $("yMonths").textContent=act.length?`${act.length} ay`:"";
-  $("yFlow").innerHTML=act.length?
-    row("İllik gəlir",fmt(income)+" ₼")+
-    row("İllik xərclər",fmt(spentAll)+" ₼")+
-    row("sabit ödənişlər",fmt(fixedPaid)+" ₼","part")+
-    row("gündəlik xərclər",fmt(daily)+" ₼","part")+
-    row("Gəlirdən qalan",fmt(leftY)+" ₼","tot","",leftY<0?"var(--bad)":"var(--ok)")
-    :`<li class="empty">Bu il üçün hələ məlumat yoxdur.</li>`;
+  $("yIncome").textContent=fmt0(income)+" ₼";
+  $("ySpent").textContent=fmt0(spentAll)+" ₼";
+  $("yLeft").textContent=fmt0(leftY)+" ₼"; $("yLeft").style.color=leftY<0?"var(--bad)":"var(--ok)";
   // debts one under another, in the payments-list order; the card's instalment and grace debt are one number
   const debts=[];
   plan.fixed.forEach(f=>{
-    if(plan.card&&f.key===plan.card.taksit){
-      const t=f.debt?debtLeft(f):0, g=cardOpenGrace();
-      if(t+g>0) debts.push({name:plan.card.name||"Kart",left:rnd2(t+g),note:[t>0?`taksit ${fmt(t)}`:"",g>0?`güzəşt ${fmt(g)}`:""].filter(Boolean).join(" + ")});
-      return;
-    }
+    if(plan.card&&f.key===plan.card.taksit){const t=f.debt?debtLeft(f):0, g=cardOpenGrace(); if(t+g>0) debts.push({name:plan.card.name||"Kart",left:rnd2(t+g)}); return;}
     if(f.debt){const l=debtLeft(f); if(l>0) debts.push({name:f.bank||f.name,left:l}); return;}
-    if(f.key==="ipoteka") debts.push({name:f.name,left:null,note:"faiz, məbləğ və müddət yazılmayıb"});
+    if(f.key==="ipoteka") debts.push({name:f.name,left:null});
   });
   if(plan.card&&!plan.fixed.some(f=>f.key===plan.card.taksit)){const g=cardOpenGrace(); if(g>0) debts.push({name:plan.card.name||"Kart",left:g});}
   const debtSum=rnd2(debts.reduce((t,d)=>t+(d.left||0),0));
-  $("yDebts").innerHTML=debts.map(d=>row(esc(d.name),d.left===null?'<span class="dim">—</span>':fmt(d.left)+" ₼","",d.note||"")).join("")+
-    row("Ümumi borc",fmt(debtSum)+" ₼","tot","","var(--warn)");
+  $("yDebt").textContent=fmt0(debtSum)+" ₼"; $("yDebt").style.color="var(--warn)";
+  $("yDebtList").innerHTML=debts.map(d=>`<li><span>${esc(d.name)}</span>${d.left===null?'<span class="dim">—</span>':`<span class="num">${fmt(d.left)} ₼</span>`}</li>`).join("");
 
   // chart
   const max=Math.max(...rows.map(r=>r.spent),1)*1.1;
@@ -1069,7 +1088,7 @@ function buildWorkbook(X){
   const r2=[["Ay","Gəlir","Sabit ödənişlər","Ödənilmiş sabit","Gündəlik xərclər","Qalıq"],
     ...months.map(mk=>{const sp=sumAmt(expenses.filter(e=>e.month===mk));const pm=paid[mk]||{};
       const pd=plan.fixed.filter(f=>pm[f.key]).reduce((t,f)=>t+dueAmount(f,mk),0); const ft=fixedTotalFor(mk);
-      return [mLabel(mk),plan.income,r2d(ft),r2d(pd),r2d(sp),r2d(plan.income-ft-sp)]})];
+      return [mLabel(mk),incomeFor(mk),r2d(ft),r2d(pd),r2d(sp),r2d(incomeFor(mk)-ft-sp)]})];
   const w2=X.utils.aoa_to_sheet(r2); money(w2,["B","C","D","E","F"],2,r2.length);
   w2["!cols"]=[{wch:15},{wch:11},{wch:15},{wch:15},{wch:16},{wch:11}];
   X.utils.book_append_sheet(wb,w2,"Aylar");
@@ -1217,7 +1236,7 @@ function goMonth(m){cur={y:yCur,m:Number(m)};render();setView("month");window.sc
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 
 function fillSettings(){
-  let h=`<label for="setIncome">Aylıq gəlir</label><input id="setIncome" type="number" step="0.01" value="${plan.income}">`;
+  let h=`<label for="setIncome">Adi aylıq gəlir</label><input id="setIncome" type="number" step="0.01" value="${plan.income}">`;
   if(plan.card) h+=`<label for="setCardLimit">${esc(plan.card.name||"Kart")} limiti</label><input id="setCardLimit" type="number" step="1" value="${plan.card.limit||0}">`;
   h+=`<div class="label" style="grid-column:1/-1;margin-top:6px">Sabit ödənişlər</div>`;
   h+=`<div class="sub" style="grid-column:1/-1">Kredit deyilsə, bank və borc xanalarını boş qoyun.</div>`;
