@@ -142,9 +142,18 @@ details summary{cursor:pointer;font-weight:600}
 .wd:disabled{opacity:.35;cursor:default}
 .wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
-.debtlist{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.84rem;color:var(--muted)}
-.debtlist li{display:flex;gap:6px;align-items:baseline}
-.debtlist b{color:var(--warn)}
+.stmt li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:.94rem}
+.stmt li:first-child{border-top:0}
+.stmt .v{font-weight:600;white-space:nowrap;text-align:right}
+.stmt .nm{min-width:0}
+.stmt .nm small{display:block;font-size:.76rem;color:var(--muted);margin-top:1px}
+.stmt li.part{border-top:0;padding:2px 0 4px 14px;font-size:.84rem;color:var(--muted)}
+.stmt li.part .v{font-weight:400}
+.stmt li.tot{border-top:2px solid var(--line);padding-top:10px}
+.stmt li.tot .nm{font-weight:600}
+.stmt li.tot .v{font-size:1.08rem}
+.stmt .dim{color:var(--muted);font-weight:400}
+.stmthead{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px}
 .mplist li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--line);cursor:pointer;font-size:.92rem}
 .mpsum{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
 .mpsum b{color:var(--fg);font-family:var(--f-num)}
@@ -396,13 +405,10 @@ details summary{cursor:pointer;font-weight:600}
   <!-- İL -->
   <div class="view" id="yearView" hidden>
     <section class="panel" aria-label="İllik xülasə">
-      <div class="hero hero3">
-        <div><div class="label">İllik gəlir</div><div class="big num" id="yIncome">0</div><div class="sub" id="yIncomeSub"></div></div>
-        <div><div class="label">İllik xərclər</div><div class="big num" id="ySpent">0</div><div class="sub" id="ySpentSub"></div></div>
-        <div><div class="label">Borc qalığı</div><div class="big num" id="yDebt">0</div><div class="sub">bu gün</div></div>
-      </div>
-      <ul class="debtlist" id="yDebtList"></ul>
-      <div class="note" id="yNote"></div>
+      <div class="top"><h2>İllik xülasə</h2><span class="sub" id="yMonths"></span></div>
+      <ul class="stmt" id="yFlow"></ul>
+      <div class="stmthead"><span class="label">Borc qalığı</span><span class="sub">bu gün</span></div>
+      <ul class="stmt" id="yDebts"></ul>
     </section>
 
     <section class="panel" aria-label="Aylar üzrə xərclər">
@@ -931,14 +937,31 @@ function renderYear(){
   const fixedPaid=rnd2(rows.reduce((t,r)=>t+paidFixedFor(r.key),0));
   const daily=rnd2(rows.reduce((t,r)=>t+r.spent,0));
   const spentAll=rnd2(fixedPaid+daily);
-  $("yIncome").textContent=fmt0(income)+" ₼"; $("yIncomeSub").textContent=`${act.length} ay`;
-  $("ySpent").textContent=fmt0(spentAll)+" ₼"; $("ySpentSub").textContent=`sabit ${fmt0(fixedPaid)} · gündəlik ${fmt0(daily)}`;
-  const debts=plan.fixed.filter(f=>f.debt).map(f=>({name:f.bank||f.name,left:debtLeft(f)}));
-  if(plan.card){const g=cardOpenGrace(); if(g>0) debts.push({name:`${plan.card.name||"Kart"} güzəşt`,left:g});}
-  const debtSum=rnd2(debts.reduce((t,d)=>t+d.left,0));
-  $("yDebt").textContent=fmt0(debtSum)+" ₼"; $("yDebt").style.color="var(--warn)";
-  $("yDebtList").innerHTML=debts.filter(d=>d.left>0).map(d=>`<li><span>${esc(d.name)}</span><b class="num">${fmt(d.left)} ₼</b></li>`).join("");
-  $("yNote").textContent=act.length?`Gəlirdən qalan: ${fmt(income-spentAll)} ₼`:"Bu il üçün hələ məlumat yoxdur.";
+  const row=(name,val,cls="",note="",color="")=>`<li${cls?` class="${cls}"`:""}><span class="nm">${name}${note?`<small>${note}</small>`:""}</span><span class="num v"${color?` style="color:${color}"`:""}>${val}</span></li>`;
+  const leftY=rnd2(income-spentAll);
+  $("yMonths").textContent=act.length?`${act.length} ay`:"";
+  $("yFlow").innerHTML=act.length?
+    row("İllik gəlir",fmt(income)+" ₼")+
+    row("İllik xərclər",fmt(spentAll)+" ₼")+
+    row("sabit ödənişlər",fmt(fixedPaid)+" ₼","part")+
+    row("gündəlik xərclər",fmt(daily)+" ₼","part")+
+    row("Gəlirdən qalan",fmt(leftY)+" ₼","tot","",leftY<0?"var(--bad)":"var(--ok)")
+    :`<li class="empty">Bu il üçün hələ məlumat yoxdur.</li>`;
+  // debts one under another, in the payments-list order; the card's instalment and grace debt are one number
+  const debts=[];
+  plan.fixed.forEach(f=>{
+    if(plan.card&&f.key===plan.card.taksit){
+      const t=f.debt?debtLeft(f):0, g=cardOpenGrace();
+      if(t+g>0) debts.push({name:plan.card.name||"Kart",left:rnd2(t+g),note:[t>0?`taksit ${fmt(t)}`:"",g>0?`güzəşt ${fmt(g)}`:""].filter(Boolean).join(" + ")});
+      return;
+    }
+    if(f.debt){const l=debtLeft(f); if(l>0) debts.push({name:f.bank||f.name,left:l}); return;}
+    if(f.key==="ipoteka") debts.push({name:f.name,left:null,note:"faiz, məbləğ və müddət yazılmayıb"});
+  });
+  if(plan.card&&!plan.fixed.some(f=>f.key===plan.card.taksit)){const g=cardOpenGrace(); if(g>0) debts.push({name:plan.card.name||"Kart",left:g});}
+  const debtSum=rnd2(debts.reduce((t,d)=>t+(d.left||0),0));
+  $("yDebts").innerHTML=debts.map(d=>row(esc(d.name),d.left===null?'<span class="dim">—</span>':fmt(d.left)+" ₼","",d.note||"")).join("")+
+    row("Ümumi borc",fmt(debtSum)+" ₼","tot","","var(--warn)");
 
   // chart
   const max=Math.max(...rows.map(r=>r.spent),1)*1.1;
