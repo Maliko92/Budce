@@ -142,11 +142,18 @@ details summary{cursor:pointer;font-weight:600}
 .wd:disabled{opacity:.35;cursor:default}
 .wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
-.mplist li{display:flex;align-items:center;gap:12px;padding:10px 2px;border-top:1px solid var(--line);cursor:pointer}
+.mplist li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--line);cursor:pointer;font-size:.92rem}
+.mpsum{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+.mpsum b{color:var(--fg);font-family:var(--f-num)}
+.mpsum b.due{color:var(--warn)} .mpsum b.ok{color:var(--ok)}
+.track.thin{height:5px;margin-top:-6px}
+.mpt{margin-left:6px;font-size:.72rem;color:var(--muted);white-space:nowrap}
+.mp.late .mpt{color:var(--bad);font-weight:600}
+.mplist b{font-weight:600}
 .mplist li:first-child{border-top:0}
 .mplist li:hover{background:var(--accent-soft)}
 .mplist .sub{display:block;margin-top:1px}
-.mpi{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);font-weight:800;color:var(--muted);flex:none;background:var(--bg)}
+.mpi{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);font-weight:800;font-size:.72rem;color:var(--muted);flex:none;background:var(--bg)}
 .mp.on .mpi{background:var(--ok);border-color:var(--ok);color:var(--surface)}
 .mp.late .mpi{border-color:var(--bad);color:var(--bad)}
 .mp.empty .mpi{border-style:dashed}
@@ -354,14 +361,10 @@ details summary{cursor:pointer;font-weight:600}
 
   <section class="panel" aria-label="Bu ayın sabit ödənişləri">
     <div class="top"><h2 id="mpTitle">Bu ayın ödənişləri</h2><span class="sub" id="mpProgress"></span></div>
-    <div class="hero hero3">
-      <div><div class="label">Aylıq cəmi</div><div class="big num" id="mpTotal">0</div></div>
-      <div><div class="label">Ödənilib</div><div class="big num" id="mpPaid">0</div></div>
-      <div><div class="label">Qalıb</div><div class="big num" id="mpDue">0</div></div>
-    </div>
-    <div class="track"><div class="fill" id="mpBar" style="width:0%"></div></div>
+    <div class="mpsum" id="mpSum"></div>
+    <div class="track thin"><div class="fill" id="mpBar" style="width:0%"></div></div>
     <ul class="mplist" id="mpList"></ul>
-    <div class="note">Ödədikcə sətrə toxunun, yenidən toxunsanız geri alınır. Qeyd etdikləriniz İl səhifəsindəki ödənişlər cədvəlinə də özü düşür.</div>
+    <div class="note">Ödəyəndə sətrə toxunun, İl cədvəlinə də özü düşür.</div>
   </section>
 
   <section class="panel" aria-label="Həftələr üzrə ayın xərcləri">
@@ -783,10 +786,10 @@ function renderMonthPay(){
       if(tDue>0){total+=tDue; n++; if(tOn){paidS+=tDue; done++}}
       const st=(tDue||gAmt)&&(tOn||!tDue)&&(gOn||!gAmt)?"on"
         :((tDue&&!tOn&&mk>=fd&&idx<nowIdx)||(gAmt&&!gOn&&g.due&&g.due<TODAY))?"late":(!tDue&&!gAmt)?"empty":"open";
-      const parts=[tDue?`Taksit ${fmt0(tDue)}${tOn?" ✓":""}`:"",`Güzəşt ${gAmt?fmt0(gAmt):"—"}${gOn?" ✓":""}`,`boş limit ${fmt0(cardFree())} ₼`].filter(Boolean).join(" · ");
+      const tag=[tDue?`T ${fmt0(tDue)}${tOn?"✓":""}`:"",gAmt?`G ${fmt0(gAmt)}${gOn?"✓":""}`:""].filter(Boolean).join(" · ");
       rows.push(`<li class="mp ${st}" data-card="${mk}"><span class="mpi">${sym[st]}</span>
-        <span class="grow"><b>${esc(card.name||"Kart")}</b><span class="sub">${parts}</span></span>
-        <span class="num mpv">${fmt(tDue+gAmt)} ₼</span></li>`);
+        <span class="grow"><b>${esc(card.name||"Kart")}</b>${tag?`<span class="mpt">${tag}</span>`:""}</span>
+        <span class="num mpv">${tDue+gAmt>0?fmt(tDue+gAmt)+" ₼":"yaz"}</span></li>`);
       return;
     }
     const due=dueAmount(f,mk), on=!!pm[f.key];
@@ -797,16 +800,18 @@ function renderMonthPay(){
     if(on) st="on"; else if(f.variable&&amt<=0) st="empty";
     else if(mk<fd) st="pre"; else if(idx<nowIdx||(idx===nowIdx&&f.day&&today>f.day)) st="late"; else st="open";
     if(amt>0){total+=amt; n++; if(on){paidS+=amt; done++}}
-    const sub=[f.bank?(f.taken?`kredit ${fmt0(f.taken)} ₼`:esc(f.name)):"",f.debt?`qalıb ${fmt0(debtLeft(f))} ₼`:"",f.day?`ayın ${f.day}-i`:"",f.group&&!entered&&amt>0?"təxmini":"",f.group&&amt<=0?"məbləği yazın":""].filter(Boolean).join(" · ");
+    let tag="";
+    if(st==="late") tag="gecikib";
+    else if(st==="open"&&f.day&&idx===nowIdx&&f.day-today<=3) tag=f.day===today?"bu gün":`${f.day-today} gün`;
+    else if(st!=="on"&&f.day) tag=`${f.day}-i`;
     rows.push(`<li class="mp ${st}" data-pay="${mk}|${f.key}"><span class="mpi">${sym[st]}</span>
-      <span class="grow"><b>${esc(f.bank||f.name)}</b>${sub?`<span class="sub">${sub}</span>`:""}</span>
+      <span class="grow"><b>${esc(f.bank||f.name)}</b>${tag?`<span class="mpt">${tag}</span>`:""}</span>
       <span class="num mpv">${amt>0?(entered?"":"≈")+fmt(amt)+" ₼":"yaz"}</span></li>`);
   });
   total=rnd2(total); paidS=rnd2(paidS);
   $("mpTitle").textContent=`${MONTHS[m]} ödənişləri`;
   $("mpProgress").textContent=`${done} / ${n} ödənilib`;
-  $("mpTotal").textContent=fmt(total); $("mpPaid").textContent=fmt(paidS);
-  $("mpDue").textContent=fmt(total-paidS); $("mpDue").style.color=total-paidS>0?"var(--warn)":"var(--ok)";
+  $("mpSum").innerHTML=`<span>Ödənilib <b>${fmt(paidS)}</b> / ${fmt(total)} ₼</span><span>Qalıb <b class="${total-paidS>0?"due":"ok"}">${fmt(total-paidS)} ₼</b></span>`;
   $("mpBar").style.width=(total>0?Math.min(100,paidS/total*100):0)+"%";
   $("mpList").innerHTML=rows.join("");
 }
