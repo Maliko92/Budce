@@ -457,6 +457,7 @@ const DEFAULT_PLAN = {
     {key:"diger", name:"Əlavə xərclər", limit:100},
     {key:"bazar", name:"Bazarlıq və qida", limit:800},
     {key:"benzin", name:"Benzin", limit:250},
+    {key:"avto", name:"Avto xərclər", limit:100},
     {key:"ev", name:"Telefon, internet, ev", limit:120},
     {key:"usaq", name:"Uşaq xərcləri", limit:150},
     {key:"saglam", name:"Dərman, sağlamlıq", limit:80},
@@ -533,6 +534,13 @@ function migrateV4(){
   plan.v4=true; lsSet("plan",plan);
 }
 // one-time: "Kommunal" is split into gas, water, electricity, internet and the MİDA service fee
+// one-time: car costs (repair, wash, parts, insurance) get their own category next to Benzin
+function migrateV6(){
+  if(plan.v6) return;
+  if(!plan.cats.some(c=>c.key==="avto")){const at=plan.cats.findIndex(c=>c.key==="benzin");
+    plan.cats.splice(at>=0?at+1:plan.cats.length,0,{key:"avto",name:"Avto xərclər",limit:100});}
+  plan.v6=true; lsSet("plan",plan);
+}
 function migrateV5(){
   if(plan.v5) return;
   const i=plan.fixed.findIndex(f=>f.key==="komm");
@@ -551,7 +559,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{});
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -984,7 +992,7 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5();
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount)}));
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
