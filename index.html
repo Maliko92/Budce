@@ -828,7 +828,7 @@ function renderWeeks(y,m,monthExp){
   $("wkSum").innerHTML=`<span>${MONTHS[m]} ${y}: ${data.length} həftə · ${monthExp.length} xərc</span><b>${fmt(total)} ₼</b>`;
   $("wkRep").innerHTML=data.map(w=>{
     const id=`${y}-${m}-${w.i}`, hasToday=w.days.some(x=>x.k===TODAY);
-    const isOpen=openWeeks.has(id)||(!touchedWeeks.has(id)&&hasToday);
+    const isOpen=openWeeks.has(id);   // all weeks start closed; they open only when tapped
     const range=w.a===w.b?`${w.a} ${SHORT[m]}`:`${w.a}–${w.b} ${SHORT[m]}`;
     const days=w.days.filter(x=>x.k<=TODAY||x.it.length).map(x=>{
       const wd=WD[new Date(y,m,x.d).getDay()];
