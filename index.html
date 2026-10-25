@@ -367,7 +367,7 @@ details summary{cursor:pointer;font-weight:600}
     <div class="mpsum" id="mpSum"></div>
     <div class="track thin"><div class="fill" id="mpBar" style="width:0%"></div></div>
     <ul class="mplist" id="mpList"></ul>
-    <div class="note">Ödəyəndə sətrə toxunun, İl cədvəlinə də özü düşür.</div>
+    <div class="note">Ödəyəndə sətrə toxunun, yenidən toxunsanız geri alınır.</div>
   </section>
 
   <section class="panel" aria-label="Həftələr üzrə ayın xərcləri">
@@ -403,19 +403,6 @@ details summary{cursor:pointer;font-weight:600}
       </div>
       <ul class="debtlist" id="yDebtList"></ul>
       <div class="note" id="yNote"></div>
-    </section>
-
-    <section class="panel" aria-label="Sabit ödənişlər">
-      <div class="top"><h2>Sabit ödənişlər</h2><span class="sub" id="fixedProgress"></span></div>
-      <div class="hero hero3">
-        <div><div class="label">Aylıq cəmi</div><div class="big num" id="pTotal">0</div></div>
-        <div><div class="label">Ödənilib</div><div class="big num" id="pPaid">0</div></div>
-        <div><div class="label">Qalıb</div><div class="big num" id="pDue">0</div></div>
-      </div>
-      <div class="track"><div class="fill" id="pBar" style="width:0%"></div></div>
-      <div class="sub">Ödədikcə xanaya toxunun, yenidən toxunsanız geri alınır. Kartın xanasına toxunanda həmin ayın taksitini və güzəşt borcunu bir yerdə qeyd edirsiniz. &nbsp;<b style="color:var(--ok)">✓</b> ödənilib · <b style="color:var(--bad)">!</b> gecikib · ○ gözlənilir</div>
-      <div class="tscroll" id="pscroll"><table class="ytable paytable" id="ptable"></table></div>
-      <div class="note"><span id="yPaySub"></span> Məbləğləri Ay səhifəsinin altındakı tənzimləmələrdən dəyişə bilərsiniz.</div>
     </section>
 
     <section class="panel" aria-label="Aylar üzrə xərclər">
@@ -912,21 +899,6 @@ document.addEventListener("click",ev=>{
 /* ---------- year view ---------- */
 let view="day", yCur=now.getFullYear();
 const SHORT=["Yan","Fev","Mar","Apr","May","İyn","İyl","Avq","Sen","Okt","Noy","Dek"];
-// routine payments table, now on the year page; the summary above it is for this month (or the year's last/first month)
-function renderPayments(){
-  const fm=yCur===now.getFullYear()?now.getMonth():yCur<now.getFullYear()?11:0, mk=`${yCur}-${pad(fm+1)}`;
-  const pm=paid[mk]||{}, fixedTotal=fixedTotalFor(mk);
-  const done=plan.fixed.filter(f=>pm[f.key]&&dueAmount(f,mk)>0).length;
-  const actN=plan.fixed.filter(f=>dueAmount(f,mk)>0).length;
-  $("fixedProgress").textContent=`${MONTHS[fm]}: ${done} / ${actN} ödənilib`;
-  const paidSum=rnd2(plan.fixed.filter(f=>pm[f.key]).reduce((s,f)=>s+dueAmount(f,mk),0));
-  $("pTotal").textContent=fmt(fixedTotal);
-  $("pPaid").textContent=fmt(paidSum);
-  $("pDue").textContent=fmt(fixedTotal-paidSum);
-  $("pDue").style.color=fixedTotal-paidSum>0?"var(--warn)":"var(--ok)";
-  $("pBar").style.width=(fixedTotal>0?Math.min(100,paidSum/fixedTotal*100):0)+"%";
-  renderPayGrid(yCur,fm);
-}
 // fixed payments actually ticked as paid in a month (utilities use the amount written for that month)
 function paidFixedFor(mk){
   const pm=paid[mk]||{};
@@ -934,7 +906,6 @@ function paidFixedFor(mk){
 }
 function renderYear(){
   $("yname").textContent=String(yCur);
-  renderPayments();
   const nowKey=now.getFullYear()*12+now.getMonth();
   const rows=[...Array(12)].map((_,m)=>{
     const key=`${yCur}-${pad(m+1)}`;
@@ -989,7 +960,7 @@ function renderYear(){
 
   autoScroll();
 }
-/* ---------- credit card: grace-period debt per month, shown as a row in the payments table ----------
+/* ---------- credit card: grace-period debt per month, shown as one row in the month's payments list ----------
    plan.card.months = {"YYYY-MM": {amount, due:"YYYY-MM-DD", paid}}. It is kept out of the budget totals:
    card purchases are already written on the Day page, so paying the card back is not a second expense. */
 const amtTxt=a=>Number.isInteger(a)?a:Number(a).toFixed(2);
@@ -1003,109 +974,6 @@ async function togglePaid(mk,fk){
   paid[mk]={...(paid[mk]||{}),[fk]:!(paid[mk]&&paid[mk][fk])};
   render();
   try{await savePaid(mk)}catch(x){toast("Yadda saxlanmadı")}
-}
-function cardRow(Y,focusM,tf,colPaid,firstData,nowKey){
-  const c=plan.card, mo=c.months||{};
-  let rowSum=0,rowN=0,paidT=0;
-  const tds=[...Array(12)].map((_,m)=>{
-    const key=`${Y}-${pad(m+1)}`, idx=Y*12+m;
-    const tDue=tf?dueAmount(tf,key):0, tOn=!!(tf&&paid[key]&&paid[key][tf.key]);
-    const tAmt=tOn&&tDue<=0?Number(tf.amount||0):tDue;
-    const g=mo[key], gAmt=g&&Number(g.amount)>0?Number(g.amount):0, gOn=!!(g&&g.paid);
-    const total=rnd2(tAmt+gAmt);
-    if(tOn){colPaid[m]+=tAmt; paidT+=tAmt; rowSum+=tAmt}
-    if(gAmt&&gOn) rowSum+=gAmt;
-    if((tOn||!tAmt)&&(gOn||!gAmt)&&(tOn||gOn)) rowN++;
-    let st,sym;
-    if(total<=0){st="empty";sym="+"}
-    else if((tOn||!tAmt)&&(gOn||!gAmt)){st="on";sym="✓"}
-    else if((tAmt&&!tOn&&key>=firstData&&idx<nowKey)||(gAmt&&!gOn&&g.due&&g.due<TODAY)){st="late";sym="!"}
-    else if(!gAmt&&key<firstData){st="pre";sym="·"}
-    else{st="open";sym="○"}
-    const parts=(tAmt?`<span class="pbk">Taksit ${fmt0(tAmt)}${tOn?" ✓":""}</span>`:"")+(gAmt?`<span class="pbk">Güzəşt ${fmt0(gAmt)}${gOn?" ✓":""}</span>`:"");
-    return `<td class="pc"><button type="button" class="pcell ${st} cardcell" data-card="${key}" aria-label="${esc(c.name||"Kart")}, ${MONTHS[m]}"><span class="pi">${sym}</span><span class="pv">${total>0?amtTxt(total)+" ₼":"yaz"}</span>${parts}</button></td>`;
-  }).join("");
-  const lim=Number(c.limit||0), tLeft=tf&&tf.debt?debtLeft(tf):0, open=cardOpenGrace(), free=cardFree();
-  const usedPct=lim>0?Math.min(100,Math.max(0,(lim-free)/lim*100)):0;
-  let pill="";
-  const next=Object.values(mo).filter(x=>!x.paid&&x.due&&Number(x.amount)>0).sort((a,b)=>a.due.localeCompare(b.due))[0];
-  if(next){const days=Math.round((Date.parse(next.due)-Date.parse(TODAY))/864e5);
-    if(days<0) pill=`<span class="pill bad">güzəşt gecikib</span>`;
-    else if(days<=3) pill=`<span class="pill warn">güzəşt: ${days===0?"bu gün":days+" gün qalıb"}</span>`;}
-  const html=`<tr class="gracerow"><td><b>${esc(c.name||"Kart")}</b><div class="sub">Limit: ${fmt0(lim)} ₼</div>
-    <div class="debt">${tf&&tf.debt?`<span>Taksit qalığı: <b>${fmt0(tLeft)} ₼</b></span>`:""}<span>Güzəşt borcu: <b>${fmt0(open)} ₼</b></span>
-    <span class="dfree">Boş limit: <b>${fmt0(free)} ₼</b></span>
-    <div class="dbar used" title="Limitin ${Math.round(usedPct)}%-i istifadədədir"><span style="width:${usedPct}%"></span></div></div>${pill}</td>${tds}
-    <td><strong>${fmt(rowSum)} ₼</strong><div class="sub">${rowN} ay</div></td></tr>`;
-  return {html,paidT};
-}
-
-/* ---------- routine payments grid (shown on the month page) ---------- */
-let payScrolled=null;
-function renderPayGrid(Y,focusM){
-  const nowKey=now.getFullYear()*12+now.getMonth();
-  const curKey=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
-  const firstData=[...expenses.map(e=>e.month),...Object.keys(paid).filter(k=>Object.values(paid[k]||{}).some(Boolean))].sort()[0]||curKey;
-  const today=now.getDate();
-  let paidYear=0; const colPaid=Array(12).fill(0);
-  const prow=plan.fixed.map(f=>{
-    if(plan.card&&f.key===plan.card.taksit){const r=cardRow(Y,focusM,f,colPaid,firstData,nowKey); paidYear+=r.paidT; return r.html;}
-    let rowSum=0,rowN=0;
-    const tds=[...Array(12)].map((_,m)=>{
-      const key=`${Y}-${pad(m+1)}`; const idx=Y*12+m;
-      const on=!!(paid[key]&&paid[key][f.key]);
-      const due=dueAmount(f,key);
-      const amt=on&&due<=0?Number(f.amount||0):due;
-      const amtTxt=Number.isInteger(amt)?amt:amt.toFixed(2);
-      const entered=!f.variable||(paid[key]&&paid[key]["amt_"+f.key]!=null);
-      let st,sym;
-      if(on){st="on";sym="✓";rowSum+=amt;rowN++;colPaid[m]+=amt}
-      else if(f.variable&&amt<=0){st="empty";sym="+"}
-      else if(f.debt&&due<=0){st="fin";sym="—"}
-      else if(key<firstData){st="pre";sym="·"}
-      else if(idx<nowKey||(idx===nowKey&&f.day&&today>f.day)){st="late";sym="!"}
-      else{st="open";sym="○"}
-      return `<td class="pc"><button type="button" class="pcell ${st}" data-pay="${key}|${f.key}" ${st==="fin"?"disabled":""} aria-label="${esc(f.name)}, ${MONTHS[m]}: ${on?"ödənilib":st==="fin"?"borc bağlanıb":"ödənilməyib"}"><span class="pi">${sym}</span><span class="pv">${st==="fin"?"bitib":st==="empty"?"yaz":(entered?"":"≈")+amtTxt+" ₼"}</span></button></td>`;
-    }).join("");
-    paidYear+=rowSum;
-    let duePill="";
-    if(Y===now.getFullYear()&&focusM===now.getMonth()&&f.day&&dueAmount(f,`${Y}-${pad(focusM+1)}`)>0&&!(paid[`${Y}-${pad(focusM+1)}`]||{})[f.key]){
-      if(today>f.day) duePill=`<span class="pill bad">gecikib</span>`;
-      else if(f.day-today<=3) duePill=`<span class="pill warn">${f.day===today?"bu gün":(f.day-today)+" gün qalıb"}</span>`;
-    }
-    // compact label: bank (or the payment's name), how much was borrowed, what is left (drops with every ✓)
-    const title=f.bank||f.name;
-    const line2=f.bank?(f.taken?`Kredit: ${fmt0(f.taken)} ₼`:esc(f.name)):(f.group?esc(f.group):"");
-    let debtHtml="";
-    if(f.debt){
-      const rem=debtLeft(f);
-      const tot=Math.max(Number(f.debt.total||0),Number(f.debt.left||0),rem);
-      const pct=tot>0?Math.min(100,Math.max(0,(tot-rem)/tot*100)):0;
-      debtHtml=rem<=0?`<div class="debt"><span class="pill ok">Bağlanıb</span></div>`
-        :`<div class="debt"><span class="dleft">Qalıb: <b>${fmt0(rem)} ₼</b></span><div class="dbar" title="${Math.round(pct)}% ödənilib"><span style="width:${pct}%"></span></div></div>`;
-    }
-    return `<tr><td><b>${esc(title)}</b>${line2?`<div class="sub">${line2}</div>`:""}${debtHtml}${duePill}</td>${tds}<td><strong>${fmt(rowSum)} ₼</strong><div class="sub">${rowN} ay</div></td></tr>`;
-  }).join("");
-  $("ptable").innerHTML=`<thead><tr><th>Ödəniş</th>${SHORT.map((s,i)=>`<th data-m="${i}" class="pc${i===focusM?" curm":""}">${s}</th>`).join("")}<th>Cəmi</th></tr></thead><tbody>${prow}`+
-    (()=>{
-      const colDaily=[...Array(12)].map((_,m)=>rnd2(sumAmt(expenses.filter(e=>e.month===`${Y}-${pad(m+1)}`))));
-      const dailyYear=rnd2(colDaily.reduce((t,v)=>t+v,0));
-      const cell=v=>`<td class="pc">${v?fmt(v)+" ₼":'<span class="dim">0 ₼</span>'}</td>`;
-      return `<tr class="total"><td>Sabit ödənilib</td>${colPaid.map(cell).join("")}<td>${fmt(paidYear)} ₼</td></tr>`+
-        `<tr class="total"><td>Gündəlik xərclər</td>${colDaily.map(cell).join("")}<td>${fmt(dailyYear)} ₼</td></tr>`+
-        `<tr class="grand"><td>Ümumi xərc</td>${colPaid.map((v,m)=>cell(rnd2(v+colDaily[m]))).join("")}<td>${fmt(rnd2(paidYear+dailyYear))} ₼</td></tr></tbody>`;
-    })();
-  $("yPaySub").textContent=`${Y} ilində cəmi ${fmt(paidYear)} ₼ ödənilib.`;
-  // bring the viewed month into view once per month shown; afterwards keep the viewer's scroll
-  requestAnimationFrame(()=>{
-    const sc=$("pscroll"), key=Y+"-"+focusM;
-    if(payScrolled!==key&&sc.offsetParent){
-      payScrolled=key;
-      const th=sc.querySelector('thead th[data-m="'+focusM+'"]'), first=sc.querySelector("thead th");
-      if(th&&first) sc.scrollLeft=Math.max(0,th.offsetLeft-first.offsetWidth-th.offsetWidth);
-    }
-    updateHints();
-  });
 }
 const isCurM=i=>yCur===now.getFullYear()&&i===now.getMonth();
 let autoScrolled=null;
@@ -1314,7 +1182,7 @@ function setView(v){
   $("eyebrow").textContent=v==="day"?"Gündəlik xərclər":v==="month"?"Aylıq büdcə":"İllik baxış";
   updBackup();
   if(v==="month") renderMonth();
-  if(v==="year"){autoScrolled=null; payScrolled=null; renderYear();}
+  if(v==="year"){autoScrolled=null; renderYear();}
 }
 function goMonth(m){cur={y:yCur,m:Number(m)};render();setView("month");window.scrollTo(0,0)}
 
@@ -1452,14 +1320,6 @@ $("saveSettings").onclick=async()=>{
 };
 $("tabDay").onclick=()=>setView("day");
 $("tabMonth").onclick=()=>setView("month");
-$("ptable").addEventListener("click",async ev=>{
-  const cb=ev.target.closest("[data-card]"); if(cb){openGrace(cb.dataset.card); return;}
-  const b=ev.target.closest(".pcell"); if(!b||!b.dataset.pay) return;
-  const [key,fk]=b.dataset.pay.split("|");
-  const f=plan.fixed.find(x=>x.key===fk);
-  if(f&&f.variable){openBill(key,f); return;}
-  togglePaid(key,fk);
-});
 $("mpList").addEventListener("click",ev=>{
   const cb=ev.target.closest("[data-card]"); if(cb){openGrace(cb.dataset.card); return;}
   const b=ev.target.closest("[data-pay]"); if(!b) return;
