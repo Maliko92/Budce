@@ -142,6 +142,18 @@ details summary{cursor:pointer;font-weight:600}
 .wd:disabled{opacity:.35;cursor:default}
 .wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.mplist li{display:flex;align-items:center;gap:12px;padding:10px 2px;border-top:1px solid var(--line);cursor:pointer}
+.mplist li:first-child{border-top:0}
+.mplist li:hover{background:var(--accent-soft)}
+.mplist .sub{display:block;margin-top:1px}
+.mpi{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);font-weight:800;color:var(--muted);flex:none;background:var(--bg)}
+.mp.on .mpi{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.mp.late .mpi{border-color:var(--bad);color:var(--bad)}
+.mp.empty .mpi{border-style:dashed}
+.mpv{font-weight:700;white-space:nowrap}
+.mp.on .mpv{color:var(--ok)}
+.mp.late .mpv{color:var(--bad)}
+.mp.empty .mpv,.mp.pre .mpv{color:var(--muted);font-weight:500}
 .editable{cursor:pointer}
 .editable:hover{background:var(--accent-soft)}
 .btn.danger{color:var(--bad);border-color:var(--bad)}
@@ -339,6 +351,18 @@ details summary{cursor:pointer;font-weight:600}
   <!-- AY -->
   <div class="view" id="monthView" hidden>
 
+
+  <section class="panel" aria-label="Bu ayın sabit ödənişləri">
+    <div class="top"><h2 id="mpTitle">Bu ayın ödənişləri</h2><span class="sub" id="mpProgress"></span></div>
+    <div class="hero hero3">
+      <div><div class="label">Aylıq cəmi</div><div class="big num" id="mpTotal">0</div></div>
+      <div><div class="label">Ödənilib</div><div class="big num" id="mpPaid">0</div></div>
+      <div><div class="label">Qalıb</div><div class="big num" id="mpDue">0</div></div>
+    </div>
+    <div class="track"><div class="fill" id="mpBar" style="width:0%"></div></div>
+    <ul class="mplist" id="mpList"></ul>
+    <div class="note">Ödədikcə sətrə toxunun, yenidən toxunsanız geri alınır. Qeyd etdikləriniz İl səhifəsindəki ödənişlər cədvəlinə də özü düşür.</div>
+  </section>
 
   <section class="panel" aria-label="Həftələr üzrə ayın xərcləri">
     <div class="top"><h2>Həftələr üzrə xərclər</h2><button class="btn" type="button" data-wkall="1">Hamısını aç</button></div>
@@ -739,10 +763,54 @@ function renderMonth(){
   const st=monthStats(cur.y,cur.m);
   const {mk,monthExp,fixedTotal,spent,daysLeft,isThis,fundLeft,free,daily}=st;
 
+  renderMonthPay();
   renderWeeks(cur.y,cur.m,monthExp);
   renderCatReport("m",monthExp,`${MONTHS[cur.m]} ${cur.y}`);
 
 }
+/* ---------- this month's routine payments: a short checklist; ticks are the same data as the year table ---------- */
+function firstDataKey(){
+  return [...expenses.map(e=>e.month),...Object.keys(paid).filter(k=>Object.values(paid[k]||{}).some(Boolean))].sort()[0]||TODAY.slice(0,7);
+}
+function renderMonthPay(){
+  const y=cur.y, m=cur.m, mk=`${y}-${pad(m+1)}`, pm=paid[mk]||{}, idx=y*12+m, nowIdx=now.getFullYear()*12+now.getMonth();
+  const fd=firstDataKey(), today=now.getDate(), card=plan.card, sym={on:"✓",late:"!",open:"",empty:"+",pre:""};
+  let total=0, paidS=0, n=0, done=0; const rows=[];
+  plan.fixed.forEach(f=>{
+    if(card&&f.key===card.taksit){
+      const tDue=dueAmount(f,mk), tOn=!!pm[f.key], g=(card.months||{})[mk];
+      const gAmt=g&&Number(g.amount)>0?Number(g.amount):0, gOn=!!(g&&g.paid);
+      if(tDue>0){total+=tDue; n++; if(tOn){paidS+=tDue; done++}}
+      const st=(tDue||gAmt)&&(tOn||!tDue)&&(gOn||!gAmt)?"on"
+        :((tDue&&!tOn&&mk>=fd&&idx<nowIdx)||(gAmt&&!gOn&&g.due&&g.due<TODAY))?"late":(!tDue&&!gAmt)?"empty":"open";
+      const parts=[tDue?`Taksit ${fmt0(tDue)}${tOn?" ✓":""}`:"",`Güzəşt ${gAmt?fmt0(gAmt):"—"}${gOn?" ✓":""}`,`boş limit ${fmt0(cardFree())} ₼`].filter(Boolean).join(" · ");
+      rows.push(`<li class="mp ${st}" data-card="${mk}"><span class="mpi">${sym[st]}</span>
+        <span class="grow"><b>${esc(card.name||"Kart")}</b><span class="sub">${parts}</span></span>
+        <span class="num mpv">${fmt(tDue+gAmt)} ₼</span></li>`);
+      return;
+    }
+    const due=dueAmount(f,mk), on=!!pm[f.key];
+    if(f.debt&&due<=0&&!on) return;                       // loan already closed
+    const amt=on&&due<=0?Number(f.amount||0):due;
+    const entered=!f.variable||(pm["amt_"+f.key]!=null);
+    let st;
+    if(on) st="on"; else if(f.variable&&amt<=0) st="empty";
+    else if(mk<fd) st="pre"; else if(idx<nowIdx||(idx===nowIdx&&f.day&&today>f.day)) st="late"; else st="open";
+    if(amt>0){total+=amt; n++; if(on){paidS+=amt; done++}}
+    const sub=[f.bank?(f.taken?`kredit ${fmt0(f.taken)} ₼`:esc(f.name)):"",f.debt?`qalıb ${fmt0(debtLeft(f))} ₼`:"",f.day?`ayın ${f.day}-i`:"",f.group&&!entered&&amt>0?"təxmini":"",f.group&&amt<=0?"məbləği yazın":""].filter(Boolean).join(" · ");
+    rows.push(`<li class="mp ${st}" data-pay="${mk}|${f.key}"><span class="mpi">${sym[st]}</span>
+      <span class="grow"><b>${esc(f.bank||f.name)}</b>${sub?`<span class="sub">${sub}</span>`:""}</span>
+      <span class="num mpv">${amt>0?(entered?"":"≈")+fmt(amt)+" ₼":"yaz"}</span></li>`);
+  });
+  total=rnd2(total); paidS=rnd2(paidS);
+  $("mpTitle").textContent=`${MONTHS[m]} ödənişləri`;
+  $("mpProgress").textContent=`${done} / ${n} ödənilib`;
+  $("mpTotal").textContent=fmt(total); $("mpPaid").textContent=fmt(paidS);
+  $("mpDue").textContent=fmt(total-paidS); $("mpDue").style.color=total-paidS>0?"var(--warn)":"var(--ok)";
+  $("mpBar").style.width=(total>0?Math.min(100,paidS/total*100):0)+"%";
+  $("mpList").innerHTML=rows.join("");
+}
+
 /* ---------- weekly report for the month: each week's total, then each day with its expenses ---------- */
 const openWeeks=new Set(), touchedWeeks=new Set();
 function renderWeeks(y,m,monthExp){
@@ -1359,6 +1427,13 @@ $("ptable").addEventListener("click",async ev=>{
   const b=ev.target.closest(".pcell"); if(!b||!b.dataset.pay) return;
   const [key,fk]=b.dataset.pay.split("|");
   const f=plan.fixed.find(x=>x.key===fk);
+  if(f&&f.variable){openBill(key,f); return;}
+  togglePaid(key,fk);
+});
+$("mpList").addEventListener("click",ev=>{
+  const cb=ev.target.closest("[data-card]"); if(cb){openGrace(cb.dataset.card); return;}
+  const b=ev.target.closest("[data-pay]"); if(!b) return;
+  const [key,fk]=b.dataset.pay.split("|"), f=plan.fixed.find(x=>x.key===fk);
   if(f&&f.variable){openBill(key,f); return;}
   togglePaid(key,fk);
 });
