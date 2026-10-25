@@ -621,6 +621,15 @@ function migrateV9(){
   plan.fixed=plan.fixed.map((f,i)=>({f,i})).sort((a,b)=>fixedRank(a.f)-fixedRank(b.f)||a.i-b.i).map(x=>x.f);
   plan.v9=true; lsSet("plan",plan);
 }
+// one-time: the mortgage becomes a debt like the loans. On 25 Oct 2026 İKZF's payoff amount was 19 816.84 ₼ at 4%;
+// at 484.70 ₼ a month (the loan part; 22.11 + 8.82 are extra fees) that is 44 payments plus 12.65 ₼ in July 2030,
+// 21 339.45 ₼ in all from November 2026. Each ✓ from November on takes 484.70 ₼ off.
+function migrateV10(){
+  if(plan.v10) return;
+  const f=plan.fixed.find(x=>x.key==="ipoteka");
+  if(f&&!f.debt) f.debt={total:21339.45,from:"2026-11",left:21339.45,pay:484.70,payoff:19816.84,rate:4,start:"2021-07"};
+  plan.v10=true; lsSet("plan",plan);
+}
 function migrateV8(){
   if(plan.v8) return;
   const fi=plan.cats.findIndex(c=>c.key==="fond");
@@ -669,7 +678,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{});
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -692,8 +701,10 @@ const rnd2=v=>Math.round(v*100)/100;
 const fmt0=n=>Math.round(n).toLocaleString("az-AZ");
 const prevKey=mk=>{const [y,m]=mk.split("-").map(Number);return m===1?`${y-1}-12`:`${y}-${pad(m-1)}`};
 function marksSince(f,from,upto){return Object.keys(paid).filter(k=>k>=from&&(!upto||k<=upto)&&paid[k]&&paid[k][f.key]).length}
+// how much one ✓ takes off the debt: usually the whole payment; the mortgage's insurance part (debt.pay) is not debt
+const debtPay=f=>Number((f.debt&&f.debt.pay)||f.amount||0);
 function debtLeft(f,upto){ if(!f.debt) return null;
-  return Math.max(0,rnd2(Number(f.debt.left||0)-marksSince(f,f.debt.from,upto)*Number(f.amount||0))); }
+  return Math.max(0,rnd2(Number(f.debt.left||0)-marksSince(f,f.debt.from,upto)*debtPay(f))); }
 function debtLeftBefore(f,mk){ if(!f.debt) return null; return mk<=f.debt.from?Number(f.debt.left||0):debtLeft(f,prevKey(mk)); }
 // what this payment asks for in month mk (the last loan payment can be smaller; 0 once the loan is closed)
 function varAmount(f,mk){
@@ -701,7 +712,8 @@ function varAmount(f,mk){
   const prev=Object.keys(paid).filter(x=>x<mk&&paid[x]&&paid[x][k]!=null).sort().pop();
   return prev?Number(paid[prev][k])||0:Number(f.amount||0);
 }
-function dueAmount(f,mk){const a=f.variable?varAmount(f,mk):Number(f.amount||0); if(!f.debt) return rnd2(a); return rnd2(Math.min(a,Math.max(0,debtLeftBefore(f,mk))));}
+function dueAmount(f,mk){const a=f.variable?varAmount(f,mk):Number(f.amount||0); if(!f.debt) return rnd2(a);
+  const l=Math.max(0,debtLeftBefore(f,mk)), p=debtPay(f); if(l<=0) return 0; return rnd2(l>=p?a:l+Math.max(0,a-p));}
 // salary written for month mk (paid[mk].income); until it is written, the usual income from settings counts
 const incomeSet=mk=>!!(paid[mk]&&paid[mk].income!=null);
 const incomeFor=mk=>incomeSet(mk)?Number(paid[mk].income)||0:Number(plan.income||0);
@@ -1130,7 +1142,7 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9();
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat==="fond"&&!plan.cats.some(c=>c.key==="fond")?"diger":e.cat}));
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
@@ -1235,6 +1247,7 @@ function goMonth(m){cur={y:yCur,m:Number(m)};render();setView("month");window.sc
 
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 
+document.querySelector('section[aria-label="Tənzimləmələr"] details').addEventListener("toggle",ev=>{if(ev.target.open) fillSettings()});
 function fillSettings(){
   let h=`<label for="setIncome">Adi aylıq gəlir</label><input id="setIncome" type="number" step="0.01" value="${plan.income}">`;
   if(plan.card) h+=`<label for="setCardLimit">${esc(plan.card.name||"Kart")} limiti</label><input id="setCardLimit" type="number" step="1" value="${plan.card.limit||0}">`;
@@ -1247,7 +1260,7 @@ function fillSettings(){
     <label for="sf_${k}">Aylıq ödəniş, ₼</label><input id="sf_${k}" type="number" step="0.01" value="${f.amount}">
     <label for="sb_${k}">Bank</label><input id="sb_${k}" type="text" placeholder="—" value="${esc(f.bank||"")}">
     <label for="st_${k}">Götürülən kredit, ₼</label><input id="st_${k}" type="number" step="1" placeholder="—" value="${f.taken||""}">
-    <label for="sd_${k}">Qalan borc, ₼</label><input id="sd_${k}" type="number" step="0.01" placeholder="—" value="${dl===null?"":dl}">`;});
+    <label for="sd_${k}">Qalan borc, ₼</label><input id="sd_${k}" type="number" step="0.01" placeholder="—" value="${dl===null?"":dl}" data-orig="${dl===null?"":dl}">`;});
   $("settings").innerHTML=h;
 }
 
@@ -1356,11 +1369,13 @@ $("saveSettings").onclick=async()=>{
   p.fixed.forEach(f=>{
     if(!$("sd_"+f.key)) return;
     const v=$("sd_"+f.key).value.trim();
+    if(v===($("sd_"+f.key).dataset.orig||"")) return;   // balance not touched: keep counting from the old anchor
     if(v===""){delete f.debt; return}
     const now_=parseFloat(v); if(!(now_>=0)) return;
     const ticks=Object.keys(paid).filter(k=>k>=curK&&paid[k]&&paid[k][f.key]).length;
     const total=Math.max(Number((f.debt&&f.debt.total)||0),now_);
-    f.debt={total,from:curK,left:rnd2(now_+ticks*Number(f.amount||0))};
+    const pay=f.debt&&f.debt.pay, per=debtPay(f);
+    f.debt={total,from:curK,left:rnd2(now_+ticks*per)}; if(pay) f.debt.pay=pay;
   });
   plan=p; render();
   try{await savePlan(); toast("Yadda saxlanıldı")}catch(x){toast("Yadda saxlanmadı")}
