@@ -165,6 +165,8 @@ details summary{cursor:pointer;font-weight:600}
 .catitems .num{white-space:nowrap}
 .catitems li.mhead{font-weight:700;color:var(--accent);border-top:2px solid var(--line);padding-top:9px}
 .catitems li.mhead:first-child{border-top:0}
+.catitems li.mhead.zero{color:var(--muted);font-weight:500}
+.wkgrp .catitems li:not(.mhead){padding-left:10px}
 .ghbox{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
 .ghform{display:grid;grid-template-columns:1fr;gap:8px}
 .installbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;font-weight:600}
@@ -336,19 +338,13 @@ details summary{cursor:pointer;font-weight:600}
 
   <!-- AY -->
   <div class="view" id="monthView" hidden>
-    <section class="panel" aria-label="Sabit ödənişlər">
-      <div class="top"><h2>Sabit ödənişlər</h2><span class="sub" id="fixedProgress"></span></div>
-      <div class="hero hero3">
-        <div><div class="label">Aylıq cəmi</div><div class="big num" id="pTotal">0</div></div>
-        <div><div class="label">Ödənilib</div><div class="big num" id="pPaid">0</div></div>
-        <div><div class="label">Qalıb</div><div class="big num" id="pDue">0</div></div>
-      </div>
-      <div class="track"><div class="fill" id="pBar" style="width:0%"></div></div>
-      <div class="sub">Ödədikcə xanaya toxunun, yenidən toxunsanız geri alınır. Kartın xanasına toxunanda həmin ayın taksitini və güzəşt borcunu bir yerdə qeyd edirsiniz. &nbsp;<b style="color:var(--ok)">✓</b> ödənilib · <b style="color:var(--bad)">!</b> gecikib · ○ gözlənilir</div>
-      <div class="tscroll" id="pscroll"><table class="ytable paytable" id="ptable"></table></div>
-      <div class="note"><span id="yPaySub"></span> Məbləğləri bu səhifənin altındakı tənzimləmələrdən dəyişə bilərsiniz.</div>
-    </section>
 
+
+  <section class="panel" aria-label="Həftələr üzrə ayın xərcləri">
+    <div class="top"><h2>Həftələr üzrə xərclər</h2><button class="btn" type="button" data-wkall="1">Hamısını aç</button></div>
+    <div class="catsum" id="wkSum"></div>
+    <div class="catrep" id="wkRep"></div>
+  </section>
 
   <section class="panel" aria-label="Kateqoriyalar üzrə ayın xərcləri">
     <div class="top"><h2>Kateqoriyalar üzrə xərclər</h2><button class="btn" type="button" data-catall="m">Hamısını aç</button></div>
@@ -377,6 +373,19 @@ details summary{cursor:pointer;font-weight:600}
         <div><div class="label">Qənaət</div><div class="big num" id="yLeft">0</div></div>
       </div>
       <div class="note" id="yNote"></div>
+    </section>
+
+    <section class="panel" aria-label="Sabit ödənişlər">
+      <div class="top"><h2>Sabit ödənişlər</h2><span class="sub" id="fixedProgress"></span></div>
+      <div class="hero hero3">
+        <div><div class="label">Aylıq cəmi</div><div class="big num" id="pTotal">0</div></div>
+        <div><div class="label">Ödənilib</div><div class="big num" id="pPaid">0</div></div>
+        <div><div class="label">Qalıb</div><div class="big num" id="pDue">0</div></div>
+      </div>
+      <div class="track"><div class="fill" id="pBar" style="width:0%"></div></div>
+      <div class="sub">Ödədikcə xanaya toxunun, yenidən toxunsanız geri alınır. Kartın xanasına toxunanda həmin ayın taksitini və güzəşt borcunu bir yerdə qeyd edirsiniz. &nbsp;<b style="color:var(--ok)">✓</b> ödənilib · <b style="color:var(--bad)">!</b> gecikib · ○ gözlənilir</div>
+      <div class="tscroll" id="pscroll"><table class="ytable paytable" id="ptable"></table></div>
+      <div class="note"><span id="yPaySub"></span> Məbləğləri Ay səhifəsinin altındakı tənzimləmələrdən dəyişə bilərsiniz.</div>
     </section>
 
     <section class="panel" aria-label="Aylar üzrə xərclər">
@@ -730,22 +739,48 @@ function renderMonth(){
   const st=monthStats(cur.y,cur.m);
   const {mk,monthExp,fixedTotal,spent,daysLeft,isThis,fundLeft,free,daily}=st;
 
-  const pm=paid[mk]||{};
-  const done=plan.fixed.filter(f=>pm[f.key]&&dueAmount(f,mk)>0).length;
-  const actN=plan.fixed.filter(f=>dueAmount(f,mk)>0).length;
-
-  // routine monthly payments
-  $("fixedProgress").textContent=`${MONTHS[cur.m]}: ${done} / ${actN} ödənilib`;
-  const paidSum=rnd2(plan.fixed.filter(f=>pm[f.key]).reduce((s,f)=>s+dueAmount(f,mk),0));
-  $("pTotal").textContent=fmt(fixedTotal);
-  $("pPaid").textContent=fmt(paidSum);
-  $("pDue").textContent=fmt(fixedTotal-paidSum);
-  $("pDue").style.color=fixedTotal-paidSum>0?"var(--warn)":"var(--ok)";
-  $("pBar").style.width=(fixedTotal>0?Math.min(100,paidSum/fixedTotal*100):0)+"%";
-  renderPayGrid(cur.y,cur.m);
+  renderWeeks(cur.y,cur.m,monthExp);
   renderCatReport("m",monthExp,`${MONTHS[cur.m]} ${cur.y}`);
 
 }
+/* ---------- weekly report for the month: each week's total, then each day with its expenses ---------- */
+const openWeeks=new Set(), touchedWeeks=new Set();
+function renderWeeks(y,m,monthExp){
+  const daysIn=new Date(y,m+1,0).getDate(), total=rnd2(sumAmt(monthExp));
+  const weeks=[]; for(let d=1;d<=daysIn;){const dow=(new Date(y,m,d).getDay()+6)%7, end=Math.min(daysIn,d+6-dow); weeks.push([d,end]); d=end+1;}
+  const key=d=>`${y}-${pad(m+1)}-${pad(d)}`;
+  const data=weeks.map(([a,b],i)=>{const days=[];for(let d=a;d<=b;d++){const k=key(d), it=monthExp.filter(e=>e.date===k).sort((x,z)=>(x.created||0)-(z.created||0)); days.push({d,k,it,sum:rnd2(sumAmt(it))});}
+    return {i,a,b,days,sum:rnd2(days.reduce((t,x)=>t+x.sum,0)),n:days.reduce((t,x)=>t+x.it.length,0)}});
+  const max=Math.max(...data.map(w=>w.sum),1);
+  $("wkSum").innerHTML=`<span>${MONTHS[m]} ${y}: ${data.length} həftə · ${monthExp.length} xərc</span><b>${fmt(total)} ₼</b>`;
+  $("wkRep").innerHTML=data.map(w=>{
+    const id=`${y}-${m}-${w.i}`, hasToday=w.days.some(x=>x.k===TODAY);
+    const isOpen=openWeeks.has(id)||(!touchedWeeks.has(id)&&hasToday);
+    const range=w.a===w.b?`${w.a} ${SHORT[m]}`:`${w.a}–${w.b} ${SHORT[m]}`;
+    const days=w.days.filter(x=>x.k<=TODAY||x.it.length).map(x=>{
+      const wd=WD[new Date(y,m,x.d).getDay()];
+      return `<li class="mhead${x.it.length?"":" zero"}"><span class="grow">${x.d} ${SHORT[m]} · ${wd}${x.k===TODAY?' <span class="pill ok">bu gün</span>':""}</span><span class="num">${fmt(x.sum)} ₼</span></li>`+
+        x.it.map(e=>`<li class="editable" data-edit="${e.id}"><span class="grow">${esc(e.note||catName(e.cat))}<span class="sub"> · ${esc(catName(e.cat))}</span></span><span class="num">${fmt(e.amount)} ₼</span></li>`).join("");
+    }).join("")||`<li class="empty">Bu həftənin günləri hələ gəlməyib.</li>`;
+    return `<details class="catgrp wkgrp" data-wk="${id}" ${isOpen?"open":""}>
+      <summary><span class="chev" aria-hidden="true">›</span>
+        <span class="grow"><span class="cn">Həftə ${w.i+1}</span> <span class="sub">${range} · ${w.n} xərc</span>
+          <span class="cbar"><span style="width:${w.sum/max*100}%"></span></span></span>
+        <span class="num cs">${fmt(w.sum)} ₼</span></summary>
+      <ul class="catitems">${days}</ul></details>`;
+  }).join("");
+}
+document.addEventListener("toggle",ev=>{
+  const d=ev.target; if(!d.classList||!d.classList.contains("wkgrp")) return;
+  touchedWeeks.add(d.dataset.wk); d.open?openWeeks.add(d.dataset.wk):openWeeks.delete(d.dataset.wk);
+},true);
+document.addEventListener("click",ev=>{
+  const b=ev.target.closest&&ev.target.closest("[data-wkall]"); if(!b) return;
+  const all=[...$("wkRep").querySelectorAll("details.wkgrp")], open=all.some(d=>!d.open);
+  all.forEach(d=>{touchedWeeks.add(d.dataset.wk); d.open=open; open?openWeeks.add(d.dataset.wk):openWeeks.delete(d.dataset.wk)});
+  b.textContent=open?"Hamısını bağla":"Hamısını aç";
+});
+
 /* ---------- category report: totals per category, and every expense listed under its category ---------- */
 const openCats=new Set();
 function renderCatReport(mode,exps,label){
@@ -790,8 +825,24 @@ document.addEventListener("click",ev=>{
 /* ---------- year view ---------- */
 let view="day", yCur=now.getFullYear();
 const SHORT=["Yan","Fev","Mar","Apr","May","İyn","İyl","Avq","Sen","Okt","Noy","Dek"];
+// routine payments table, now on the year page; the summary above it is for this month (or the year's last/first month)
+function renderPayments(){
+  const fm=yCur===now.getFullYear()?now.getMonth():yCur<now.getFullYear()?11:0, mk=`${yCur}-${pad(fm+1)}`;
+  const pm=paid[mk]||{}, fixedTotal=fixedTotalFor(mk);
+  const done=plan.fixed.filter(f=>pm[f.key]&&dueAmount(f,mk)>0).length;
+  const actN=plan.fixed.filter(f=>dueAmount(f,mk)>0).length;
+  $("fixedProgress").textContent=`${MONTHS[fm]}: ${done} / ${actN} ödənilib`;
+  const paidSum=rnd2(plan.fixed.filter(f=>pm[f.key]).reduce((s,f)=>s+dueAmount(f,mk),0));
+  $("pTotal").textContent=fmt(fixedTotal);
+  $("pPaid").textContent=fmt(paidSum);
+  $("pDue").textContent=fmt(fixedTotal-paidSum);
+  $("pDue").style.color=fixedTotal-paidSum>0?"var(--warn)":"var(--ok)";
+  $("pBar").style.width=(fixedTotal>0?Math.min(100,paidSum/fixedTotal*100):0)+"%";
+  renderPayGrid(yCur,fm);
+}
 function renderYear(){
   $("yname").textContent=String(yCur);
+  renderPayments();
   const nowKey=now.getFullYear()*12+now.getMonth();
   const rows=[...Array(12)].map((_,m)=>{
     const key=`${yCur}-${pad(m+1)}`;
@@ -1164,8 +1215,8 @@ function setView(v){
   $("tabYear").setAttribute("aria-selected",v==="year");
   $("eyebrow").textContent=v==="day"?"Gündəlik xərclər":v==="month"?"Aylıq büdcə":"İllik baxış";
   updBackup();
-  if(v==="month"){payScrolled=null; renderMonth();}
-  if(v==="year"){autoScrolled=null; renderYear();}
+  if(v==="month") renderMonth();
+  if(v==="year"){autoScrolled=null; payScrolled=null; renderYear();}
 }
 function goMonth(m){cur={y:yCur,m:Number(m)};render();setView("month");window.scrollTo(0,0)}
 
