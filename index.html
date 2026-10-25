@@ -151,6 +151,11 @@ details summary{cursor:pointer;font-weight:600}
 .incform{display:flex;flex-direction:column;gap:8px}
 .inchead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .inchead .sub.ok{color:var(--ok)} .inchead .sub.warn{color:var(--warn)}
+.incview{display:flex;align-items:center;gap:12px;cursor:pointer;border-radius:8px}
+.incview .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.incview .incsum{font-size:1.25rem;font-weight:700;color:var(--ok);white-space:nowrap}
+.incview .x{font-size:1.05rem;padding:6px 8px}
+.incview:hover .x{color:var(--accent)}
 .incrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}
 .incrow label{display:flex;flex-direction:column;gap:3px;min-width:0}
 .incrow input{font-family:var(--f-num);font-size:1rem;text-align:right}
@@ -393,8 +398,13 @@ details summary{cursor:pointer;font-weight:600}
   <!-- AY -->
   <div class="view" id="monthView" hidden>
   <section class="panel" aria-label="Ayın gəliri">
+    <div class="incview" id="incView" role="button" tabindex="0" aria-label="Gəliri düzəlt" hidden>
+      <div class="grow"><b id="incViewTitle">Gəlir</b><span class="sub" id="incViewSub"></span></div>
+      <span class="num incsum" id="incViewSum"></span>
+      <span class="x" aria-hidden="true">✎</span>
+    </div>
     <form class="incform" id="incForm">
-      <div class="inchead"><b id="incTitle">Gəlir</b><span class="sub" id="incSub"></span></div>
+      <div class="inchead"><div><b id="incTitle">Gəlir</b> <span class="sub" id="incSub"></span></div><button class="btn" type="button" id="incCancel" hidden>Ləğv et</button></div>
       <div class="incrow">
         <label><span class="sub">Maaş</span><input id="incAmount" type="number" inputmode="decimal" step="0.01" min="0"></label>
         <label><span class="sub">Əlavə gəlir</span><input id="incExtra" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></label>
@@ -839,24 +849,43 @@ function renderMonth(){
   renderCatReport("m",monthExp,`${MONTHS[cur.m]} ${cur.y}`);
 
 }
-function renderIncome(mk){
-  const [y,m]=mk.split("-").map(Number), set=incomeSet(mk), inp=$("incAmount");
-  $("incTitle").textContent=`${MONTHS[m-1]} gəliri`;
-  const sub=$("incSub"), thisM=mk===TODAY.slice(0,7);
-  sub.className="sub"+(set?" ok":thisM?" warn":"");
-  sub.textContent=set?"yazılıb":thisM?"maaş gələndə yazın":"yazılmayıb";
-  inp.placeholder=fmt0(plan.income);
-  if(document.activeElement!==inp||inp.dataset.mk!==mk){inp.value=set?paid[mk].income:""; inp.dataset.mk=mk;}
-  const ex=$("incExtra"), e=extraFor(mk);
-  if(document.activeElement!==ex||ex.dataset.mk!==mk){ex.value=e?e:""; ex.dataset.mk=mk;}
+// written once: afterwards only the amount and ✎ show; ✎ (or a tap on the line) opens the fields again
+let incEdit=null;
+function fillIncome(mk){
+  const inp=$("incAmount"), ex=$("incExtra"), e=extraFor(mk);
+  inp.value=incomeSet(mk)?paid[mk].income:""; inp.dataset.mk=mk;
+  ex.value=e?e:""; ex.dataset.mk=mk;
 }
+function renderIncome(mk){
+  const [y,m]=mk.split("-").map(Number), set=incomeSet(mk), e=extraFor(mk), has=set||e>0, editing=incEdit===mk;
+  const title=`${MONTHS[m-1]} gəliri`, thisM=mk===TODAY.slice(0,7);
+  $("incView").hidden=!has||editing; $("incForm").hidden=has&&!editing; $("incCancel").hidden=!editing;
+  if(has&&!editing){
+    $("incViewTitle").textContent=title;
+    const vs=$("incViewSub");
+    vs.className="sub"+(!set&&thisM?" warn":"");
+    vs.textContent=set?(e?`maaş ${fmt0(paid[mk].income)} + əlavə ${fmt0(e)}`:"maaş"):(thisM?"əlavə gəlir · maaş hələ yazılmayıb":"əlavə gəlir");
+    $("incViewSum").textContent=fmt0((set?Number(paid[mk].income)||0:0)+e)+" ₼";
+  }
+  $("incTitle").textContent=title;
+  const sub=$("incSub");
+  sub.className="sub"+(!has&&thisM?" warn":"");
+  sub.textContent=editing?"düzəliş":thisM?"maaş gələndə yazın":"yazılmayıb";
+  $("incAmount").placeholder=fmt0(plan.income);
+  const inp=$("incAmount"), ex=$("incExtra");
+  if((document.activeElement!==inp&&document.activeElement!==ex)||inp.dataset.mk!==mk) fillIncome(mk);
+}
+function editIncome(){const mk=mKey(); incEdit=mk; fillIncome(mk); renderIncome(mk); $("incAmount").focus();}
+$("incView").addEventListener("click",editIncome);
+$("incView").addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault(); editIncome();}});
+$("incCancel").onclick=()=>{const mk=mKey(); incEdit=null; fillIncome(mk); renderIncome(mk);};
 $("incForm").addEventListener("submit",async ev=>{
   ev.preventDefault();
   const inp=$("incAmount"), ex=$("incExtra"), mk=inp.dataset.mk||mKey(), v=inp.value.trim(), w=ex.value.trim();
   const pm={...(paid[mk]||{})};
   if(v===""){delete pm.income} else {const a=rnd2(parseFloat(v)); if(!(a>=0)){toast("Məbləği yazın"); return;} pm.income=a;}
   if(w===""||Number(w)===0){delete pm.extra} else {const a=rnd2(parseFloat(w)); if(!(a>0)){toast("Əlavə gəliri düzgün yazın"); return;} pm.extra=a;}
-  paid[mk]=pm; inp.blur(); ex.blur(); render();
+  paid[mk]=pm; incEdit=null; inp.blur(); ex.blur(); render();
   try{await savePaid(mk); toast(v===""&&w===""?"Gəlir silindi":"Gəlir yazıldı")}catch(x){toast("Yadda saxlanmadı")}
 });
 /* ---------- this month's routine payments: a short checklist; ticks are the same data as the year table ---------- */
