@@ -142,6 +142,9 @@ details summary{cursor:pointer;font-weight:600}
 .wd:disabled{opacity:.35;cursor:default}
 .wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.debtlist{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.84rem;color:var(--muted)}
+.debtlist li{display:flex;gap:6px;align-items:baseline}
+.debtlist b{color:var(--warn)}
 .mplist li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--line);cursor:pointer;font-size:.92rem}
 .mpsum{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
 .mpsum b{color:var(--fg);font-family:var(--f-num)}
@@ -393,12 +396,12 @@ details summary{cursor:pointer;font-weight:600}
   <!-- İL -->
   <div class="view" id="yearView" hidden>
     <section class="panel" aria-label="İllik xülasə">
-      <div class="hero">
-        <div><div class="label">İllik gəlir</div><div class="big num" id="yIncome">0</div></div>
-        <div><div class="label">Sabit ödənişlər</div><div class="big num" id="yFixed">0</div></div>
-        <div><div class="label">Gündəlik xərclər</div><div class="big num" id="ySpent">0</div></div>
-        <div><div class="label">Qənaət</div><div class="big num" id="yLeft">0</div></div>
+      <div class="hero hero3">
+        <div><div class="label">İllik gəlir</div><div class="big num" id="yIncome">0</div><div class="sub" id="yIncomeSub"></div></div>
+        <div><div class="label">İllik xərclər</div><div class="big num" id="ySpent">0</div><div class="sub" id="ySpentSub"></div></div>
+        <div><div class="label">Borc qalığı</div><div class="big num" id="yDebt">0</div><div class="sub">bu gün</div></div>
       </div>
+      <ul class="debtlist" id="yDebtList"></ul>
       <div class="note" id="yNote"></div>
     </section>
 
@@ -913,6 +916,11 @@ function renderPayments(){
   $("pBar").style.width=(fixedTotal>0?Math.min(100,paidSum/fixedTotal*100):0)+"%";
   renderPayGrid(yCur,fm);
 }
+// fixed payments actually ticked as paid in a month (utilities use the amount written for that month)
+function paidFixedFor(mk){
+  const pm=paid[mk]||{};
+  return plan.fixed.filter(f=>pm[f.key]).reduce((t,f)=>{const d=dueAmount(f,mk); return t+(d>0?d:Number(f.amount||0))},0);
+}
 function renderYear(){
   $("yname").textContent=String(yCur);
   renderPayments();
@@ -930,14 +938,20 @@ function renderYear(){
   });
   const act=rows.filter(r=>r.active);
   const sum=k=>act.reduce((s,r)=>s+r[k],0);
-  $("yIncome").textContent=fmt(sum("income"));
-  $("yFixed").textContent=fmt(sum("fixed"));
-  $("ySpent").textContent=fmt(sum("spent"));
-  const yl=sum("left"); $("yLeft").textContent=fmt(yl);
-  $("yLeft").style.color=yl<0?"var(--bad)":"var(--ok)";
-  $("yNote").textContent=act.length
-    ?`${act.length} ay hesablanıb. Orta aylıq gündəlik xərc: ${fmt(sum("spent")/act.length)} ₼. Sabit ödənişlər cari plana görə götürülür.`
-    :"Bu il üçün hələ məlumat yoxdur.";
+  const yl=sum("left");
+  // the three numbers that matter for the year: income, what was actually spent, and what is still owed
+  const income=sum("income");
+  const fixedPaid=rnd2(rows.reduce((t,r)=>t+paidFixedFor(r.key),0));
+  const daily=rnd2(rows.reduce((t,r)=>t+r.spent,0));
+  const spentAll=rnd2(fixedPaid+daily);
+  $("yIncome").textContent=fmt0(income)+" ₼"; $("yIncomeSub").textContent=`${act.length} ay`;
+  $("ySpent").textContent=fmt0(spentAll)+" ₼"; $("ySpentSub").textContent=`sabit ${fmt0(fixedPaid)} · gündəlik ${fmt0(daily)}`;
+  const debts=plan.fixed.filter(f=>f.debt).map(f=>({name:f.bank||f.name,left:debtLeft(f)}));
+  if(plan.card){const g=cardOpenGrace(); if(g>0) debts.push({name:`${plan.card.name||"Kart"} güzəşt`,left:g});}
+  const debtSum=rnd2(debts.reduce((t,d)=>t+d.left,0));
+  $("yDebt").textContent=fmt0(debtSum)+" ₼"; $("yDebt").style.color="var(--warn)";
+  $("yDebtList").innerHTML=debts.filter(d=>d.left>0).map(d=>`<li><span>${esc(d.name)}</span><b class="num">${fmt(d.left)} ₼</b></li>`).join("");
+  $("yNote").textContent=act.length?`Gəlirdən qalan: ${fmt(income-spentAll)} ₼`:"Bu il üçün hələ məlumat yoxdur.";
 
   // chart
   const max=Math.max(...rows.map(r=>r.spent),1)*1.1;
