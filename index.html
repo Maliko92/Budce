@@ -456,8 +456,7 @@ const DEFAULT_PLAN = {
   cats: [
     {key:"diger", name:"Əlavə xərclər", limit:100},
     {key:"bazar", name:"Bazarlıq və qida", limit:800},
-    {key:"benzin", name:"Benzin", limit:250},
-    {key:"avto", name:"Avto xərclər", limit:100},
+    {key:"avto", name:"Avto xərclər", limit:350},
     {key:"ev", name:"Telefon, internet, ev", limit:120},
     {key:"usaq", name:"Uşaq xərcləri", limit:150},
     {key:"saglam", name:"Dərman, sağlamlıq", limit:80},
@@ -535,6 +534,19 @@ function migrateV4(){
 }
 // one-time: "Kommunal" is split into gas, water, electricity, internet and the MİDA service fee
 // one-time: car costs (repair, wash, parts, insurance) get their own category next to Benzin
+// one-time: Benzin is folded into "Avto xərclər" (limits added together, old benzin expenses moved over)
+function migrateV7(){
+  if(plan.v7) return;
+  const bi=plan.cats.findIndex(c=>c.key==="benzin");
+  if(bi>=0){
+    const b=plan.cats[bi], ai=plan.cats.findIndex(c=>c.key==="avto");
+    if(ai>=0){plan.cats[ai].limit=Number(plan.cats[ai].limit||0)+Number(b.limit||0); plan.cats.splice(bi,1);}
+    else plan.cats[bi]={key:"avto",name:"Avto xərclər",limit:Number(b.limit||0)};
+    let moved=false; expenses.forEach(e=>{if(e.cat==="benzin"){e.cat="avto"; moved=true;}});
+    if(moved) lsSet("expenses",expenses);
+  }
+  plan.v7=true; lsSet("plan",plan);
+}
 function migrateV6(){
   if(plan.v6) return;
   if(!plan.cats.some(c=>c.key==="avto")){const at=plan.cats.findIndex(c=>c.key==="benzin");
@@ -559,7 +571,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{});
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -992,8 +1004,8 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6();
-  expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount)}));
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7();
+  expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat}));
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
   $("welcome").hidden=true;
