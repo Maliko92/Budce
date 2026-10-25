@@ -142,6 +142,9 @@ details summary{cursor:pointer;font-weight:600}
 .wd:disabled{opacity:.35;cursor:default}
 .wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.editable{cursor:pointer}
+.editable:hover{background:var(--accent-soft)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
 .catsum{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:9px 12px;border-radius:10px;background:var(--accent-soft);font-size:.9rem}
 .catsum b{font-family:var(--f-num);font-size:1.1rem;color:var(--accent)}
 .catrep{display:flex;flex-direction:column;gap:8px}
@@ -456,6 +459,18 @@ details summary{cursor:pointer;font-weight:600}
     <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn" type="button" id="gsClose">Bağla</button></div>
   </form>
 </div>
+<div class="sheet" id="editSheet" hidden>
+  <form class="sheet-card" id="esForm">
+    <h2>Xərci düzəlt</h2>
+    <div class="field"><label class="label" for="esCat">Kateqoriya</label><select id="esCat"></select></div>
+    <div class="field"><label class="label" for="esNote">Qeyd</label><input id="esNote" type="text" autocomplete="off" placeholder="Qeyd yazın"></div>
+    <div class="gsrow">
+      <div class="field"><label class="label" for="esAmount">Məbləğ, ₼</label><input id="esAmount" type="number" inputmode="decimal" step="0.01" min="0.01" required></div>
+      <div class="field"><label class="label" for="esDate">Tarix</label><input id="esDate" type="date" required></div>
+    </div>
+    <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn danger" type="button" id="esDelete">Sil</button><button class="btn" type="button" id="esClose">Bağla</button></div>
+  </form>
+</div>
 <div class="sheet" id="billSheet" hidden>
   <form class="sheet-card" id="bsForm">
     <h2 id="bsTitle">Qaz</h2>
@@ -524,6 +539,10 @@ async function savePaid(month){
 async function addExpense(e){
   if(store==="db"){const ref=db.collection("expenses").doc(); e.id=ref.id; await ref.set(e)}
   else{e.id="l"+Date.now(); expenses.push(e); lsSet("expenses",expenses); render()}
+}
+async function updExpense(id,ch){
+  if(store==="db"){await db.collection("expenses").doc(id).update(ch)}
+  else{expenses=expenses.map(x=>x.id===id?{...x,...ch}:x); lsSet("expenses",expenses); render()}
 }
 async function delExpense(id){
   if(store==="db"){await db.collection("expenses").doc(id).delete()}
@@ -728,10 +747,11 @@ function renderDay(){
 
   $("dayListTitle").textContent=isToday?"Bu günün xərcləri":`${dLabel} xərcləri`;
   $("dayTotal").textContent=items.length?fmt(tot)+" ₼":"";
-  $("dayList").innerHTML=items.length?items.map(e=>`<li>
+  $("dayList").innerHTML=items.length?items.map(e=>`<li class="editable" data-edit="${e.id}">
     <div class="grow"><div>${esc(e.note||catName(e.cat))}</div><div class="sub">${esc(catName(e.cat))}</div></div>
     <span class="num">${fmt(e.amount)}</span>
-    <button class="x" data-del="${e.id}" aria-label="Sil">×</button></li>`).join("")
+    <button class="x" type="button" data-edit="${e.id}" aria-label="Düzəlt">✎</button>
+    <button class="x" type="button" data-del="${e.id}" aria-label="Sil">×</button></li>`).join("")
     :`<li class="empty">${isToday?"Bu gün hələ xərc yazılmayıb. Yuxarıdakı formadan əlavə edin.":"Bu gün üçün xərc yazılmayıb."}</li>`;
 }
 
@@ -767,7 +787,7 @@ function renderCatReport(mode,exps,label){
   $(mode+"catSum").innerHTML=`<span>${label}: ${exps.length} xərc</span><b>${fmt(total)} ₼</b>`;
   if(!groups.length){$(mode+"catRep").innerHTML=`<div class="empty">Bu dövrdə xərc yazılmayıb.</div>`; return;}
   const dmy=e=>{const [,m,d]=e.date.split("-").map(Number);return `${d} ${SHORT[m-1]}`};
-  const item=e=>`<li><span class="cd">${dmy(e)}</span><span class="grow">${esc(e.note||"—")}</span><span class="num">${fmt(e.amount)} ₼</span></li>`;
+  const item=e=>`<li class="editable" data-edit="${e.id}"><span class="cd">${dmy(e)}</span><span class="grow">${esc(e.note||"—")}</span><span class="num">${fmt(e.amount)} ₼</span></li>`;
   $(mode+"catRep").innerHTML=groups.map(g=>{
     const id=mode+":"+g.key, pct=total>0?g.sum/total*100:0;
     const items=g.items.slice().sort((a,b)=>a.date.localeCompare(b.date)||(a.created||0)-(b.created||0));
@@ -1214,6 +1234,38 @@ document.addEventListener("click",async ev=>{
   const b=ev.target.closest&&ev.target.closest("[data-del]"); if(!b) return;
   try{await delExpense(b.dataset.del); toast("Silindi")}catch(x){toast("Silinmədi: "+(x.code||"xəta"))}
 });
+// edit a written expense: category, note, amount or date
+let esId=null;
+function openEdit(id){
+  const e=expenses.find(x=>x.id===id); if(!e) return; esId=id;
+  const opts=plan.cats.map(c=>`<option value="${c.key}">${esc(c.name)}</option>`);
+  if(!plan.cats.some(c=>c.key===e.cat)) opts.push(`<option value="${esc(e.cat)}">${esc(catName(e.cat))}</option>`);
+  $("esCat").innerHTML=opts.join(""); $("esCat").value=e.cat;
+  $("esNote").value=e.note||""; $("esAmount").value=e.amount; $("esDate").value=e.date;
+  $("esDelete").textContent="Sil"; delete $("esDelete").dataset.armed;
+  $("editSheet").hidden=false;
+}
+function closeEdit(){$("editSheet").hidden=true; esId=null}
+document.addEventListener("click",ev=>{
+  if(!ev.target.closest||ev.target.closest("[data-del]")) return;
+  const t=ev.target.closest("[data-edit]"); if(t) openEdit(t.dataset.edit);
+});
+$("esForm").addEventListener("submit",async ev=>{
+  ev.preventDefault(); if(!esId) return;
+  const amount=rnd2(parseFloat($("esAmount").value)), date=$("esDate").value;
+  if(!(amount>0)||!date){toast("Məbləğ və tarixi yazın"); return;}
+  const ch={cat:$("esCat").value,note:$("esNote").value.trim(),amount,date,month:date.slice(0,7)}, id=esId;
+  closeEdit();
+  try{await updExpense(id,ch); toast("Düzəldildi")}catch(x){toast("Yadda saxlanmadı: "+(x.code||"xəta"))}
+});
+$("esDelete").onclick=async()=>{
+  const b=$("esDelete"); if(!esId) return;
+  if(!b.dataset.armed){b.dataset.armed="1"; b.textContent="Silinsin? Bəli"; return;}
+  const id=esId; closeEdit();
+  try{await delExpense(id); toast("Silindi")}catch(x){toast("Silinmədi: "+(x.code||"xəta"))}
+};
+$("esClose").onclick=closeEdit;
+$("editSheet").addEventListener("click",ev=>{if(ev.target.id==="editSheet") closeEdit()});
 function shiftDay(n){
   const [y,m,d]=dSel.split("-").map(Number); const dt=new Date(y,m-1,d+n);
   dSel=`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
