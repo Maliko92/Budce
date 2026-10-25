@@ -511,6 +511,7 @@ const DEFAULT_PLAN = {
     {key:"k35", name:"Kredit 35 000 (11,5%)", amount:779.34, day:13},
     {key:"k15", name:"İstehlak krediti 15 000 (12,5%)", amount:398.70, day:21},
     {key:"taksit", name:"Birkart taksit", amount:227.15, day:null},
+    {key:"ipoteka", name:"İpoteka ev", amount:515.63, day:null},
     {key:"bagca", name:"Uşaq bağçası", amount:150, day:null},
     {key:"qaz", name:"Qaz", amount:0, day:null, variable:true, group:"kommunal"},
     {key:"su", name:"Su", amount:0, day:null, variable:true, group:"kommunal"},
@@ -604,6 +605,16 @@ function migrateV4(){
 // one-time: car costs (repair, wash, parts, insurance) get their own category next to Benzin
 // one-time: Benzin is folded into "Avto xərclər" (limits added together, old benzin expenses moved over)
 // one-time: the "unexpected costs" fund is folded into "Əlavə xərclər" (limit added, old fund expenses moved over)
+// one-time: the monthly mortgage payment (İKZF: 484.70 + 22.11 + 8.82) joins the fixed payments
+function migrateV9(){
+  if(plan.v9) return;
+  if(!plan.fixed.some(f=>f.key==="ipoteka")){
+    const ti=plan.fixed.findIndex(f=>f.key==="taksit"), ki=plan.fixed.findIndex(f=>f.key==="k15");
+    const at=ti>=0?ti+1:(ki>=0?ki+1:0);
+    plan.fixed.splice(at,0,{key:"ipoteka",name:"İpoteka ev",amount:515.63,day:null});
+  }
+  plan.v9=true; lsSet("plan",plan);
+}
 function migrateV8(){
   if(plan.v8) return;
   const fi=plan.cats.findIndex(c=>c.key==="fond");
@@ -652,7 +663,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{});
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -1204,7 +1215,7 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8();
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat==="fond"&&!plan.cats.some(c=>c.key==="fond")?"diger":e.cat}));
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
