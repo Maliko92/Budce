@@ -495,16 +495,16 @@ details summary{cursor:pointer;font-weight:600}
 const DEFAULT_PLAN = {
   income: 3500,
   fixed: [
+    {key:"ipoteka", name:"İpoteka ev", amount:515.63, day:null},
     {key:"k35", name:"Kredit 35 000 (11,5%)", amount:779.34, day:13},
     {key:"k15", name:"İstehlak krediti 15 000 (12,5%)", amount:398.70, day:21},
     {key:"taksit", name:"Birkart taksit", amount:227.15, day:null},
-    {key:"ipoteka", name:"İpoteka ev", amount:515.63, day:null},
-    {key:"bagca", name:"Uşaq bağçası", amount:150, day:null},
     {key:"qaz", name:"Qaz", amount:0, day:null, variable:true, group:"kommunal"},
     {key:"su", name:"Su", amount:0, day:null, variable:true, group:"kommunal"},
     {key:"isiq", name:"İşıq", amount:0, day:null, variable:true, group:"kommunal"},
     {key:"internet", name:"İnternet", amount:0, day:null, variable:true, group:"kommunal"},
-    {key:"mida", name:"MİDA kommunal", amount:0, day:null, variable:true, group:"kommunal"}
+    {key:"mida", name:"MİDA kommunal", amount:0, day:null, variable:true, group:"kommunal"},
+    {key:"bagca", name:"Uşaq bağçası", amount:150, day:null}
   ],
   cats: [
     {key:"diger", name:"Əlavə xərclər", limit:300},
@@ -592,14 +592,19 @@ function migrateV4(){
 // one-time: car costs (repair, wash, parts, insurance) get their own category next to Benzin
 // one-time: Benzin is folded into "Avto xərclər" (limits added together, old benzin expenses moved over)
 // one-time: the "unexpected costs" fund is folded into "Əlavə xərclər" (limit added, old fund expenses moved over)
-// one-time: the monthly mortgage payment (İKZF: 484.70 + 22.11 + 8.82) joins the fixed payments
+// one-time: the monthly mortgage payment (İKZF: 484.70 + 22.11 + 8.82) joins the fixed payments,
+// and the list is ordered: mortgage, bank loans, card, utilities, then everything else
+function fixedRank(f){
+  if(f.key==="ipoteka") return 0;
+  if(plan.card&&f.key===plan.card.taksit) return 2;
+  if(f.bank||f.debt) return 1;
+  if(f.group==="kommunal") return 3;
+  return 4;
+}
 function migrateV9(){
   if(plan.v9) return;
-  if(!plan.fixed.some(f=>f.key==="ipoteka")){
-    const ti=plan.fixed.findIndex(f=>f.key==="taksit"), ki=plan.fixed.findIndex(f=>f.key==="k15");
-    const at=ti>=0?ti+1:(ki>=0?ki+1:0);
-    plan.fixed.splice(at,0,{key:"ipoteka",name:"İpoteka ev",amount:515.63,day:null});
-  }
+  if(!plan.fixed.some(f=>f.key==="ipoteka")) plan.fixed.unshift({key:"ipoteka",name:"İpoteka ev",amount:515.63,day:null});
+  plan.fixed=plan.fixed.map((f,i)=>({f,i})).sort((a,b)=>fixedRank(a.f)-fixedRank(b.f)||a.i-b.i).map(x=>x.f);
   plan.v9=true; lsSet("plan",plan);
 }
 function migrateV8(){
