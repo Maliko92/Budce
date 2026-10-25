@@ -148,10 +148,36 @@ details summary{cursor:pointer;font-weight:600}
 .debtlist li:first-child{border-top:0}
 .debtlist .num{font-weight:600}
 .debtlist .dim{color:var(--muted);font-weight:400}
-.incrow{display:flex;align-items:center;gap:10px}
-.incrow label{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.incrow input{width:118px;flex:none;font-family:var(--f-num);font-size:1rem;text-align:right}
-.incrow .sub.ok{color:var(--ok)} .incrow .sub.warn{color:var(--warn)}
+.incform{display:flex;flex-direction:column;gap:8px}
+.inchead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.inchead .sub.ok{color:var(--ok)} .inchead .sub.warn{color:var(--warn)}
+.incrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}
+.incrow label{display:flex;flex-direction:column;gap:3px;min-width:0}
+.incrow input{font-family:var(--f-num);font-size:1rem;text-align:right}
+/* the year table (like the old Excel "Ayliq" sheet) */
+.yt{width:max-content;min-width:100%}
+.yt th,.yt td{padding:6px 9px}
+.yt th:first-child,.yt td:first-child{min-width:122px;max-width:160px}
+.yt thead th{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.yt thead th.curm{background:var(--accent);color:var(--bg)}
+.yt thead th[data-go]{cursor:pointer}
+.yt th[data-m],.yt th.pc[data-m]{min-width:62px;padding:6px 9px;text-align:right}
+.yt td{min-width:62px}
+.yt td.curm{background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.yt td.tot,.yt th.tot{background:var(--accent-soft);font-weight:700}
+.yt td small{display:block;font-size:.72rem;color:var(--muted);font-weight:400;font-family:var(--f-body)}
+.yt tr.ghead td{background:var(--bg);color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700;padding:10px 9px 4px;border-bottom:0}
+.yt tr.ghead td:first-child{background:var(--bg);white-space:nowrap;overflow:visible}
+.yt tr.sub td{font-weight:700}
+.yt tr.cat td{color:var(--muted);font-size:.8rem;padding-top:3px;padding-bottom:3px}
+.yt tr.cat td:first-child{padding-left:22px}
+.yt tr.exp{cursor:pointer}
+.yt tr.exp td:first-child b::after{content:" ›";color:var(--muted)}
+.yt tr.exp.open td:first-child b::after{content:" ⌄"}
+.yt tr.grand td{font-weight:700;border-top:2px solid var(--line)}
+.yt tr.net td{font-weight:800}
+.yt tr.info td{color:var(--muted)}
+.yt .est{color:var(--muted)}
 .mplist li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--line);cursor:pointer;font-size:.92rem}
 .mpsum{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
 .mpsum b{color:var(--fg);font-family:var(--f-num)}
@@ -368,10 +394,13 @@ details summary{cursor:pointer;font-weight:600}
   <!-- AY -->
   <div class="view" id="monthView" hidden>
   <section class="panel" aria-label="Ayın gəliri">
-    <form class="incrow" id="incForm">
-      <label for="incAmount"><b id="incTitle">Gəlir</b><span class="sub" id="incSub"></span></label>
-      <input id="incAmount" type="number" inputmode="decimal" step="0.01" min="0">
-      <button class="btn primary" type="submit">Yaz</button>
+    <form class="incform" id="incForm">
+      <div class="inchead"><b id="incTitle">Gəlir</b><span class="sub" id="incSub"></span></div>
+      <div class="incrow">
+        <label><span class="sub">Maaş</span><input id="incAmount" type="number" inputmode="decimal" step="0.01" min="0"></label>
+        <label><span class="sub">Əlavə gəlir</span><input id="incExtra" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></label>
+        <button class="btn primary" type="submit">Yaz</button>
+      </div>
     </form>
   </section>
 
@@ -419,17 +448,18 @@ details summary{cursor:pointer;font-weight:600}
       <ul class="debtlist" id="yDebtList"></ul>
     </section>
 
+    <section class="panel" aria-label="İllik cədvəl">
+      <div class="top"><h2>İllik cədvəl</h2><span class="sub">Aya toxunun, həmin ay açılsın</span></div>
+      <div class="tscroll"><table class="ytable yt" id="ytable"></table></div>
+      <div class="note">Rəqəmlər özü toplanır: ✓ etdiyiniz ödənişlər, Gün səhifəsindəki xərclər və Ay səhifəsində yazdığınız gəlir. ≈ olan maaş hələ yazılmayıb.</div>
+    </section>
+
     <section class="panel" aria-label="Aylar üzrə xərclər">
       <div class="top"><h2>Aylar üzrə gündəlik xərclər</h2>
         <span class="sub">Aya toxunun, həmin ay açılsın</span></div>
       <div class="chart" id="chart"></div>
     </section>
 
-    <section class="panel" aria-label="Ay-ay cədvəl">
-      <h2>Ay-ay cədvəl</h2>
-      <div class="sub">Aya toxunun, həmin ayın səhifəsi açılsın.</div>
-      <div class="tscroll"><table class="ytable" id="ytable"></table></div>
-    </section>
 
     <section class="panel" aria-label="Kateqoriyalar üzrə ilin xərcləri">
       <div class="top"><h2>Kateqoriyalar üzrə illik xərclər</h2><button class="btn" type="button" data-catall="y">Hamısını aç</button></div>
@@ -717,6 +747,9 @@ function dueAmount(f,mk){const a=f.variable?varAmount(f,mk):Number(f.amount||0);
 // salary written for month mk (paid[mk].income); until it is written, the usual income from settings counts
 const incomeSet=mk=>!!(paid[mk]&&paid[mk].income!=null);
 const incomeFor=mk=>incomeSet(mk)?Number(paid[mk].income)||0:Number(plan.income||0);
+// extra income written for the month (bonus, holiday pay…); loans taken are not income and are not written here
+const extraFor=mk=>Number(paid[mk]&&paid[mk].extra)||0;
+const totalIncome=mk=>rnd2(incomeFor(mk)+extraFor(mk));
 const fixedTotalFor=mk=>rnd2(plan.fixed.reduce((t,f)=>t+dueAmount(f,mk),0));
 
 function monthStats(y,m){
@@ -729,7 +762,7 @@ function monthStats(y,m){
   const daysLeft=isThis?daysIn-now.getDate()+1:daysIn;
   const fund=(plan.cats.find(c=>c.key==="fond")||{limit:0});
   const fundLeft=Math.max(0,fund.limit-sumAmt(monthExp.filter(e=>e.cat==="fond")));
-  const free=incomeFor(mk)-fixedTotal-spent-fundLeft;
+  const free=totalIncome(mk)-fixedTotal-spent-fundLeft;
   return {mk,monthExp,fixedTotal,spent,daysLeft,isThis,fundLeft,free,daily:free/daysLeft};
 }
 
@@ -815,14 +848,17 @@ function renderIncome(mk){
   sub.textContent=set?"yazılıb":thisM?"maaş gələndə yazın":"yazılmayıb";
   inp.placeholder=fmt0(plan.income);
   if(document.activeElement!==inp||inp.dataset.mk!==mk){inp.value=set?paid[mk].income:""; inp.dataset.mk=mk;}
+  const ex=$("incExtra"), e=extraFor(mk);
+  if(document.activeElement!==ex||ex.dataset.mk!==mk){ex.value=e?e:""; ex.dataset.mk=mk;}
 }
 $("incForm").addEventListener("submit",async ev=>{
   ev.preventDefault();
-  const inp=$("incAmount"), mk=inp.dataset.mk||mKey(), v=inp.value.trim();
+  const inp=$("incAmount"), ex=$("incExtra"), mk=inp.dataset.mk||mKey(), v=inp.value.trim(), w=ex.value.trim();
   const pm={...(paid[mk]||{})};
   if(v===""){delete pm.income} else {const a=rnd2(parseFloat(v)); if(!(a>=0)){toast("Məbləği yazın"); return;} pm.income=a;}
-  paid[mk]=pm; inp.blur(); render();
-  try{await savePaid(mk); toast(v===""?"Gəlir silindi":"Gəlir yazıldı")}catch(x){toast("Yadda saxlanmadı")}
+  if(w===""||Number(w)===0){delete pm.extra} else {const a=rnd2(parseFloat(w)); if(!(a>0)){toast("Əlavə gəliri düzgün yazın"); return;} pm.extra=a;}
+  paid[mk]=pm; inp.blur(); ex.blur(); render();
+  try{await savePaid(mk); toast(v===""&&w===""?"Gəlir silindi":"Gəlir yazıldı")}catch(x){toast("Yadda saxlanmadı")}
 });
 /* ---------- this month's routine payments: a short checklist; ticks are the same data as the year table ---------- */
 function firstDataKey(){
@@ -964,15 +1000,14 @@ function renderYear(){
     const ex=expenses.filter(e=>e.month===key);
     const spent=ex.reduce((s,e)=>s+Number(e.amount||0),0);
     const idx=yCur*12+m; const future=idx>nowKey; const has=ex.length>0;
-    const active=!future&&(has||idx===nowKey||incomeSet(key));
+    const active=!future&&(has||idx===nowKey||incomeSet(key)||extraFor(key)>0);
     const byCat={}; ex.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amount);
     return {m,key,spent,future,active,isCur:idx===nowKey,
-      income:active?incomeFor(key):0, fixed:active?fixedTotalFor(key):0,
-      left:active?incomeFor(key)-fixedTotalFor(key)-spent:0, byCat};
+      income:active?totalIncome(key):0, fixed:active?fixedTotalFor(key):0,
+      left:active?totalIncome(key)-fixedTotalFor(key)-spent:0, byCat};
   });
   const act=rows.filter(r=>r.active);
   const sum=k=>act.reduce((s,r)=>s+r[k],0);
-  const yl=sum("left");
   // the three numbers that matter for the year: income, what was actually spent, and what is still owed
   const income=sum("income");
   const fixedPaid=rnd2(rows.reduce((t,r)=>t+paidFixedFor(r.key),0));
@@ -1006,19 +1041,81 @@ function renderYear(){
   if(!$("mlabels")){const d=document.createElement("div");d.className="mlabels";d.id="mlabels";$("chart").after(d)}
   $("mlabels").innerHTML=SHORT.map(s=>`<span>${s}</span>`).join("");
 
-  // month table
-  const cell=(r,v)=>r.active?fmt(v):`<span class="dim">—</span>`;
-  $("ytable").innerHTML=`<thead><tr><th>Ay</th><th>Gəlir</th><th>Sabit</th><th>Gündəlik xərc</th><th>Qalıq</th></tr></thead><tbody>`+
-    rows.map(r=>`<tr class="click ${r.isCur?"cur":""}" data-go="${r.m}"><td>${MONTHS[r.m]}</td>
-      <td>${cell(r,r.income)}</td><td>${cell(r,r.fixed)}</td><td>${cell(r,r.spent)}</td>
-      <td style="color:${!r.active?"inherit":r.left<0?"var(--bad)":"var(--ok)"}">${cell(r,r.left)}</td></tr>`).join("")+
-    `<tr class="total"><td>Cəmi</td><td>${fmt(sum("income"))}</td><td>${fmt(sum("fixed"))}</td><td>${fmt(sum("spent"))}</td><td>${fmt(yl)}</td></tr></tbody>`;
+  renderYearTable();
 
   // category report for the whole year
   renderCatReport("y",expenses.filter(e=>e.month.startsWith(yCur+"-")),`${yCur} ili`);
 
   autoScroll();
 }
+/* ---------- the year table: income, loans, bills, daily spending and the result, month by month ----------
+   Everything is counted from what is already written: ✓ payments, the Day page and the month's income.
+   Loans taken are never income here, and card purchases count once (on the Day page), so the result stays honest. */
+let yDailyOpen=false;
+function yearTable(Y){
+  const nowKey=now.getFullYear()*12+now.getMonth();
+  const M=[...Array(12)].map((_,m)=>{
+    const key=`${Y}-${pad(m+1)}`, idx=Y*12+m, pm=paid[key]||{}, ex=expenses.filter(e=>e.month===key);
+    const active=idx<=nowKey&&(ex.length>0||idx===nowKey||incomeSet(key)||extraFor(key)>0||plan.fixed.some(f=>pm[f.key]));
+    return {m,key,ex,active,isCur:idx===nowKey};
+  });
+  const tot=vals=>vals.some(v=>v!=null)?rnd2(vals.reduce((t,v)=>t+(v||0),0)):null;
+  const row=(label,vals,o={})=>({label,vals,total:"total" in o?o.total:tot(vals),...o});
+  const sumOf=(label,parts,o={})=>row(label,M.map((x,m)=>x.active||parts.some(p=>p.vals[m]!=null)?rnd2(parts.reduce((t,p)=>t+(p.vals[m]||0),0)):null),o);
+  const paidAmt=(f,key)=>{const pm=paid[key]||{}; if(!pm[f.key]) return null; const d=dueAmount(f,key); return rnd2(d>0?d:Number(f.amount||0));};
+  const out=[];
+  // income
+  const sal=row("Maaş",M.map(x=>x.active?incomeFor(x.key):null),{est:M.map(x=>x.active&&!incomeSet(x.key))});
+  const ext=row("Əlavə gəlir",M.map(x=>extraFor(x.key)||null));
+  const inc=sumOf("Gəlir cəmi",[sal,ext],{cls:"sub"});
+  out.push({head:"Gəlir"},sal,ext,inc);
+  // loans and the card instalment (mortgage first, as in the payments list)
+  const card=plan.card, isLoan=f=>f.debt||f.key==="ipoteka"||(card&&f.key===card.taksit);
+  const loanRows=plan.fixed.filter(isLoan).map(f=>{
+    const vals=M.map(x=>paidAmt(f,x.key)), left=f.debt?debtLeft(f):null;
+    if(f.debt&&left<=0&&!vals.some(v=>v!=null)) return null;            // closed before this year
+    const name=card&&f.key===card.taksit?`${card.name||"Kart"} taksit`:(f.bank||f.name);
+    return row(name,vals,{sub:left==null?"":left>0?`qalıq ${fmt0(left)} ₼`:"bağlanıb"});
+  }).filter(Boolean);
+  const loans=sumOf("Kreditlər cəmi",loanRows,{cls:"sub"});
+  out.push({head:"Kreditlər və kart"},...loanRows,loans);
+  // bills, kindergarten and other fixed payments
+  const billRows=plan.fixed.filter(f=>!isLoan(f)).map(f=>row(f.name,M.map(x=>paidAmt(f,x.key))));
+  const bills=sumOf("Kommunal cəmi",billRows,{cls:"sub"});
+  out.push({head:"Kommunal və bağça"},...billRows,bills);
+  // daily spending, opens into categories
+  const daily=row("Gündəlik xərclər",M.map(x=>x.active||x.ex.length?rnd2(sumAmt(x.ex)):null),{cls:"sub exp"+(yDailyOpen?" open":""),exp:true});
+  out.push({head:"Gündəlik"},daily);
+  if(yDailyOpen){
+    const keys=[...new Set(M.flatMap(x=>x.ex.map(e=>e.cat)))];
+    const order=[...plan.cats.map(c=>c.key).filter(k=>keys.includes(k)),...keys.filter(k=>!plan.cats.some(c=>c.key===k))];
+    order.forEach(k=>out.push(row(catName(k),M.map(x=>{const v=x.ex.filter(e=>e.cat===k); return v.length?rnd2(sumAmt(v)):null;}),{cls:"cat"})));
+  }
+  // result
+  const all=sumOf("Ümumi xərc",[loans,bills,daily],{cls:"grand"});
+  const net=row("Nəticə",M.map((x,m)=>x.active?rnd2((inc.vals[m]||0)-(all.vals[m]||0)):null),{cls:"net",color:true});
+  let run=0; const cum=row("İlin əvvəlindən",M.map((x,m)=>{if(!x.active) return null; run=rnd2(run+net.vals[m]); return run;}),{cls:"info",color:true,total:null});
+  const debtFs=plan.fixed.filter(f=>f.debt);
+  const dv=M.map(x=>x.active?rnd2(debtFs.reduce((t,f)=>t+debtLeft(f,x.key),0)):null);
+  const last=[...dv].reverse().find(v=>v!=null);
+  const debt=row("Kredit qalığı",dv,{cls:"info",sub:"ay sonu",total:last==null?null:last});
+  out.push({head:"Nəticə"},all,net,cum,debt);
+  return {M,rows:out};
+}
+function renderYearTable(){
+  const T=yearTable(yCur);
+  const num=(v,est,color)=>v==null?"":`<span class="${est?"est":""}"${color?` style="color:${v<0?"var(--bad)":"var(--ok)"}"`:""}>${est?"≈":""}${fmt0(v)}</span>`;
+  const head=`<thead><tr><th>${yCur}</th>${SHORT.map((s,i)=>`<th data-m="${i}" data-go="${i}" class="pc${T.M[i].isCur?" curm":""}">${s}</th>`).join("")}<th class="tot">Cəmi</th></tr></thead>`;
+  const body=T.rows.map(r=>{
+    if(r.head) return `<tr class="ghead"><td>${esc(r.head)}</td><td colspan="13"></td></tr>`;
+    const cells=r.vals.map((v,m)=>`<td class="${T.M[m].isCur?"curm":""}">${num(v,r.est&&r.est[m],r.color)}</td>`).join("");
+    return `<tr class="${r.cls||""}"${r.exp?' data-yexp="1"':""}><td><b>${esc(r.label)}</b>${r.sub?`<small>${esc(r.sub)}</small>`:""}</td>${cells}<td class="tot">${num(r.total,false,r.color)}</td></tr>`;
+  }).join("");
+  $("ytable").innerHTML=head+`<tbody>${body}</tbody>`;
+}
+$("ytable").addEventListener("click",ev=>{
+  if(ev.target.closest("[data-yexp]")){yDailyOpen=!yDailyOpen; renderYearTable(); updateHints();}
+});
 /* ---------- credit card: grace-period debt per month, shown as one row in the month's payments list ----------
    plan.card.months = {"YYYY-MM": {amount, due:"YYYY-MM-DD", paid}}. It is kept out of the budget totals:
    card purchases are already written on the Day page, so paying the card back is not a second expense. */
@@ -1100,7 +1197,7 @@ function buildWorkbook(X){
   const r2=[["Ay","Gəlir","Sabit ödənişlər","Ödənilmiş sabit","Gündəlik xərclər","Qalıq"],
     ...months.map(mk=>{const sp=sumAmt(expenses.filter(e=>e.month===mk));const pm=paid[mk]||{};
       const pd=plan.fixed.filter(f=>pm[f.key]).reduce((t,f)=>t+dueAmount(f,mk),0); const ft=fixedTotalFor(mk);
-      return [mLabel(mk),incomeFor(mk),r2d(ft),r2d(pd),r2d(sp),r2d(incomeFor(mk)-ft-sp)]})];
+      return [mLabel(mk),totalIncome(mk),r2d(ft),r2d(pd),r2d(sp),r2d(totalIncome(mk)-ft-sp)]})];
   const w2=X.utils.aoa_to_sheet(r2); money(w2,["B","C","D","E","F"],2,r2.length);
   w2["!cols"]=[{wch:15},{wch:11},{wch:15},{wch:15},{wch:16},{wch:11}];
   X.utils.book_append_sheet(wb,w2,"Aylar");
@@ -1117,6 +1214,18 @@ function buildWorkbook(X){
   const w4=X.utils.aoa_to_sheet(r4); money(w4,["C","D","F"],2,r4.length);
   w4["!cols"]=[{wch:30},{wch:14},{wch:18},{wch:11},{wch:12},{wch:15},...months.map(()=>({wch:14}))];
   X.utils.book_append_sheet(wb,w4,"Sabit ödənişlər");
+  // the year table, one sheet per year that has data
+  const years=[...new Set(months.map(mk=>mk.slice(0,4)))].sort();
+  const keep=yDailyOpen; yDailyOpen=true;
+  years.forEach(y=>{
+    const T=yearTable(Number(y));
+    const aoa=[[`İl ${y}`,...MONTHS,"Cəmi"],...T.rows.map(r=>r.head?[r.head.toLocaleUpperCase("az")]:[(r.cls==="cat"?"   ":"")+r.label+(r.sub?` (${r.sub})`:""),...r.vals.map(v=>v==null?"":v),r.total==null?"":r.total])];
+    const w=X.utils.aoa_to_sheet(aoa);
+    money(w,[...Array(13)].map((_,i)=>X.utils.encode_col(i+1)),2,aoa.length);
+    w["!cols"]=[{wch:30},...MONTHS.map(()=>({wch:11})),{wch:12}];
+    X.utils.book_append_sheet(wb,w,`İl ${y}`);
+  });
+  yDailyOpen=keep;
   return wb;
 }
 $("exportBtn").onclick=async()=>{
