@@ -328,22 +328,6 @@ details summary{cursor:pointer;font-weight:600}
       </form>
     </section>
 
-    <section class="panel" aria-label="Günün vəziyyəti">
-      <div class="daycards">
-        <div class="dcard main">
-          <div class="label">Gündə xərcləyə bilərsiniz</div>
-          <div class="dbig num" id="sDaily">0 ₼</div>
-          <div class="sub" id="sDays">—</div>
-        </div>
-        <div class="dcard">
-          <div class="label" id="sTodayLabel">Bu gün xərclədiniz</div>
-          <div class="dbig num" id="sToday">0 ₼</div>
-          <div id="sTodayPill"></div>
-        </div>
-      </div>
-      <div class="monthlink"><span id="dMonthLine">—</span><button class="btn" id="goMonthBtn" type="button">Ay səhifəsi ›</button></div>
-    </section>
-
     <section class="panel" aria-label="Günün xərcləri">
       <div class="top"><h2 id="dayListTitle">Bu günün xərcləri</h2><strong class="num" id="dayTotal"></strong></div>
       <ul class="dlist" id="dayList"></ul>
@@ -729,22 +713,8 @@ function renderDay(){
   $("weekTotal").innerHTML=`<span>${thisWeek?"Bu həftə xərclənib":"Həftənin cəmi"}<span class="sub"> · ${ws.getDate()} ${SHORT[ws.getMonth()]} – ${we.getDate()} ${SHORT[we.getMonth()]}</span></span><b>${fmt(wSum)} ₼</b>`;
   $("formTitle").textContent=isToday?"Bu günün xərcini yazın":`${dLabel} üçün xərc yazın`;
 
-  const st=monthStats(now.getFullYear(),now.getMonth());
-  const dl=Math.max(0,st.daily);
-  $("sDaily").textContent=fmt(dl)+" ₼";
-  $("sDaily").style.color=st.daily<=0?"var(--bad)":"var(--accent)";
-  $("sDays").textContent=`Ay sonunadək ${st.daysLeft} gün qalıb`;
-
   const items=expenses.filter(e=>e.date===dSel).sort((a,b)=>(b.created||0)-(a.created||0));
   const tot=sumAmt(items);
-  $("sTodayLabel").textContent=isToday?"Bu gün xərclədiniz":`${dLabel} xərclənib`;
-  $("sToday").textContent=fmt(tot)+" ₼";
-  $("sToday").style.color=tot>dl?"var(--bad)":"var(--fg)";
-  $("sTodayPill").innerHTML=tot===0?`<span class="sub">hələ xərc yoxdur</span>`
-    :tot>dl?`<span class="pill bad">${fmt(tot-dl)} ₼ artıq</span>`
-    :`<span class="pill ok">${fmt(dl-tot)} ₼ qalıb</span>`;
-  $("dMonthLine").innerHTML=`${MONTHS[now.getMonth()]}: <b class="num">${fmt(st.spent)} ₼</b> xərclənib, ay sonunadək <b class="num">${fmt(Math.max(0,st.free))} ₼</b> qalır`;
-
   $("dayListTitle").textContent=isToday?"Bu günün xərcləri":`${dLabel} xərcləri`;
   $("dayTotal").textContent=items.length?fmt(tot)+" ₼":"";
   $("dayList").innerHTML=items.length?items.map(e=>`<li class="editable" data-edit="${e.id}">
@@ -1278,7 +1248,6 @@ $("weekStrip").addEventListener("click",ev=>{
   const b=ev.target.closest(".wd"); if(!b||b.disabled) return;
   dSel=b.dataset.d; renderDay();
 });
-$("goMonthBtn").onclick=()=>{cur={y:now.getFullYear(),m:now.getMonth()};renderMonth();setView("month");window.scrollTo(0,0)};
 function pickNote(o){
   $("fNote").value=o.text;
   if(plan.cats.some(c=>c.key===o.cat)) $("fCat").value=o.cat;
