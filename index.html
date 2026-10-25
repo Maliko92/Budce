@@ -157,7 +157,7 @@ details summary{cursor:pointer;font-weight:600}
 /* the year table (like the old Excel "Ayliq" sheet) */
 .yt{width:max-content;min-width:100%}
 .yt th,.yt td{padding:6px 9px}
-.yt th:first-child,.yt td:first-child{min-width:122px;max-width:160px}
+.ytable.yt th:first-child,.ytable.yt td:first-child{min-width:118px;max-width:none;white-space:nowrap}
 .yt thead th{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .yt thead th.curm{background:var(--accent);color:var(--bg)}
 .yt thead th[data-go]{cursor:pointer}
@@ -166,17 +166,16 @@ details summary{cursor:pointer;font-weight:600}
 .yt td.curm{background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
 .yt td.tot,.yt th.tot{background:var(--accent-soft);font-weight:700}
 .yt td small{display:block;font-size:.72rem;color:var(--muted);font-weight:400;font-family:var(--f-body)}
-.yt tr.ghead td{background:var(--bg);color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700;padding:10px 9px 4px;border-bottom:0}
-.yt tr.ghead td:first-child{background:var(--bg);white-space:nowrap;overflow:visible}
-.yt tr.sub td{font-weight:700}
-.yt tr.cat td{color:var(--muted);font-size:.8rem;padding-top:3px;padding-bottom:3px}
-.yt tr.cat td:first-child{padding-left:22px}
+.yt tbody td{padding-top:10px;padding-bottom:10px}
+.yt tr.cat td{color:var(--muted);font-size:.8rem;padding-top:4px;padding-bottom:4px;border-bottom-style:dashed}
+.yt tr.cat td:first-child{padding-left:18px}
+.yt tr.cat b{font-weight:400}
 .yt tr.exp{cursor:pointer}
 .yt tr.exp td:first-child b::after{content:" ›";color:var(--muted)}
 .yt tr.exp.open td:first-child b::after{content:" ⌄"}
-.yt tr.grand td{font-weight:700;border-top:2px solid var(--line)}
-.yt tr.net td{font-weight:800}
-.yt tr.info td{color:var(--muted)}
+.yt tr.grand td{font-weight:700;border-top:2px solid var(--muted)}
+.yt tr.net td{font-weight:800;font-size:.95rem}
+.yt tr.info td{color:var(--muted);font-size:.8rem}
 .yt .est{color:var(--muted)}
 .mplist li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--line);cursor:pointer;font-size:.92rem}
 .mpsum{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
@@ -451,7 +450,7 @@ details summary{cursor:pointer;font-weight:600}
     <section class="panel" aria-label="İllik cədvəl">
       <div class="top"><h2>İllik cədvəl</h2><span class="sub">Aya toxunun, həmin ay açılsın</span></div>
       <div class="tscroll"><table class="ytable yt" id="ytable"></table></div>
-      <div class="note">Rəqəmlər özü toplanır: ✓ etdiyiniz ödənişlər, Gün səhifəsindəki xərclər və Ay səhifəsində yazdığınız gəlir. ≈ olan maaş hələ yazılmayıb.</div>
+      <div class="note">› olan sətrə toxunun, ətraflı açılır. ≈ maaş hələ yazılmayıb deməkdir.</div>
     </section>
 
     <section class="panel" aria-label="Aylar üzrə xərclər">
@@ -1051,7 +1050,7 @@ function renderYear(){
 /* ---------- the year table: income, loans, bills, daily spending and the result, month by month ----------
    Everything is counted from what is already written: ✓ payments, the Day page and the month's income.
    Loans taken are never income here, and card purchases count once (on the Day page), so the result stays honest. */
-let yDailyOpen=false;
+const yOpen=new Set();
 function yearTable(Y){
   const nowKey=now.getFullYear()*12+now.getMonth();
   const M=[...Array(12)].map((_,m)=>{
@@ -1063,58 +1062,53 @@ function yearTable(Y){
   const row=(label,vals,o={})=>({label,vals,total:"total" in o?o.total:tot(vals),...o});
   const sumOf=(label,parts,o={})=>row(label,M.map((x,m)=>x.active||parts.some(p=>p.vals[m]!=null)?rnd2(parts.reduce((t,p)=>t+(p.vals[m]||0),0)):null),o);
   const paidAmt=(f,key)=>{const pm=paid[key]||{}; if(!pm[f.key]) return null; const d=dueAmount(f,key); return rnd2(d>0?d:Number(f.amount||0));};
-  const out=[];
-  // income
+  // income: salary (≈ until it is written) + extra income
   const sal=row("Maaş",M.map(x=>x.active?incomeFor(x.key):null),{est:M.map(x=>x.active&&!incomeSet(x.key))});
   const ext=row("Əlavə gəlir",M.map(x=>extraFor(x.key)||null));
-  const inc=sumOf("Gəlir cəmi",[sal,ext],{cls:"sub"});
-  out.push({head:"Gəlir"},sal,ext,inc);
-  // loans and the card instalment (mortgage first, as in the payments list)
+  const inc=sumOf("Gəlir",[sal,ext],{key:"inc",kids:[sal,ext],est:sal.est});
+  // loans and the card instalment, then bills and kindergarten
   const card=plan.card, isLoan=f=>f.debt||f.key==="ipoteka"||(card&&f.key===card.taksit);
   const loanRows=plan.fixed.filter(isLoan).map(f=>{
     const vals=M.map(x=>paidAmt(f,x.key)), left=f.debt?debtLeft(f):null;
-    if(f.debt&&left<=0&&!vals.some(v=>v!=null)) return null;            // closed before this year
-    const name=card&&f.key===card.taksit?`${card.name||"Kart"} taksit`:(f.bank||f.name);
-    return row(name,vals,{sub:left==null?"":left>0?`qalıq ${fmt0(left)} ₼`:"bağlanıb"});
+    if(f.debt&&left<=0&&!vals.some(v=>v!=null)) return null;
+    return row(card&&f.key===card.taksit?`${card.name||"Kart"} taksit`:(f.bank||f.name),vals);
   }).filter(Boolean);
-  const loans=sumOf("Kreditlər cəmi",loanRows,{cls:"sub"});
-  out.push({head:"Kreditlər və kart"},...loanRows,loans);
-  // bills, kindergarten and other fixed payments
+  const loans=sumOf("Kreditlər",loanRows,{key:"loan",kids:loanRows});
   const billRows=plan.fixed.filter(f=>!isLoan(f)).map(f=>row(f.name,M.map(x=>paidAmt(f,x.key))));
-  const bills=sumOf("Kommunal cəmi",billRows,{cls:"sub"});
-  out.push({head:"Kommunal və bağça"},...billRows,bills);
-  // daily spending, opens into categories
-  const daily=row("Gündəlik xərclər",M.map(x=>x.active||x.ex.length?rnd2(sumAmt(x.ex)):null),{cls:"sub exp"+(yDailyOpen?" open":""),exp:true});
-  out.push({head:"Gündəlik"},daily);
-  if(yDailyOpen){
-    const keys=[...new Set(M.flatMap(x=>x.ex.map(e=>e.cat)))];
-    const order=[...plan.cats.map(c=>c.key).filter(k=>keys.includes(k)),...keys.filter(k=>!plan.cats.some(c=>c.key===k))];
-    order.forEach(k=>out.push(row(catName(k),M.map(x=>{const v=x.ex.filter(e=>e.cat===k); return v.length?rnd2(sumAmt(v)):null;}),{cls:"cat"})));
-  }
+  const bills=sumOf("Kommunal",billRows,{key:"bill",kids:billRows});
+  // daily spending by category
+  const keys=[...new Set(M.flatMap(x=>x.ex.map(e=>e.cat)))];
+  const order=[...plan.cats.map(c=>c.key).filter(k=>keys.includes(k)),...keys.filter(k=>!plan.cats.some(c=>c.key===k))];
+  const catRows=order.map(k=>row(catName(k),M.map(x=>{const v=x.ex.filter(e=>e.cat===k); return v.length?rnd2(sumAmt(v)):null;})));
+  const daily=row("Gündəlik xərc",M.map(x=>x.active||x.ex.length?rnd2(sumAmt(x.ex)):null),{key:"day",kids:catRows});
   // result
-  const all=sumOf("Ümumi xərc",[loans,bills,daily],{cls:"grand"});
-  const net=row("Nəticə",M.map((x,m)=>x.active?rnd2((inc.vals[m]||0)-(all.vals[m]||0)):null),{cls:"net",color:true});
-  let run=0; const cum=row("İlin əvvəlindən",M.map((x,m)=>{if(!x.active) return null; run=rnd2(run+net.vals[m]); return run;}),{cls:"info",color:true,total:null});
+  const all=sumOf("Cəmi xərc",[loans,bills,daily],{cls:"grand"});
+  const net=row("Qalıq",M.map((x,m)=>x.active?rnd2((inc.vals[m]||0)-(all.vals[m]||0)):null),{cls:"net",color:true});
   const debtFs=plan.fixed.filter(f=>f.debt);
   const dv=M.map(x=>x.active?rnd2(debtFs.reduce((t,f)=>t+debtLeft(f,x.key),0)):null);
   const last=[...dv].reverse().find(v=>v!=null);
-  const debt=row("Kredit qalığı",dv,{cls:"info",sub:"ay sonu",total:last==null?null:last});
-  out.push({head:"Nəticə"},all,net,cum,debt);
-  return {M,rows:out};
+  const debt=row("Borc qalığı",dv,{cls:"info",sub:"ayın sonunda",total:last==null?null:last});
+  return {M,rows:[inc,loans,bills,daily,all,net,debt]};
 }
 function renderYearTable(){
   const T=yearTable(yCur);
-  const num=(v,est,color)=>v==null?"":`<span class="${est?"est":""}"${color?` style="color:${v<0?"var(--bad)":"var(--ok)"}"`:""}>${est?"≈":""}${fmt0(v)}</span>`;
-  const head=`<thead><tr><th>${yCur}</th>${SHORT.map((s,i)=>`<th data-m="${i}" data-go="${i}" class="pc${T.M[i].isCur?" curm":""}">${s}</th>`).join("")}<th class="tot">Cəmi</th></tr></thead>`;
+  const num=(v,est,color,dash)=>v==null?"":(dash&&!v)?'<span class="est">–</span>':`<span class="${est?"est":""}"${color?` style="color:${v<0?"var(--bad)":"var(--ok)"}"`:""}>${est?"≈":""}${fmt0(v)}</span>`;
+  const head=`<thead><tr><th>${yCur}</th>${SHORT.map((s,i)=>`<th data-m="${i}" data-go="${i}" class="${T.M[i].isCur?"curm":""}">${s}</th>`).join("")}<th class="tot">Cəmi</th></tr></thead>`;
+  const tr=(r,cls,dash)=>{
+    const cells=r.vals.map((v,m)=>`<td class="${T.M[m].isCur?"curm":""}">${num(v,r.est&&r.est[m],r.color,dash)}</td>`).join("");
+    return `<tr class="${cls}"${r.key?` data-yrow="${r.key}"`:""}><td><b>${esc(r.label)}</b>${r.sub?`<small>${esc(r.sub)}</small>`:""}</td>${cells}<td class="tot">${num(r.total,false,r.color,dash)}</td></tr>`;
+  };
   const body=T.rows.map(r=>{
-    if(r.head) return `<tr class="ghead"><td>${esc(r.head)}</td><td colspan="13"></td></tr>`;
-    const cells=r.vals.map((v,m)=>`<td class="${T.M[m].isCur?"curm":""}">${num(v,r.est&&r.est[m],r.color)}</td>`).join("");
-    return `<tr class="${r.cls||""}"${r.exp?' data-yexp="1"':""}><td><b>${esc(r.label)}</b>${r.sub?`<small>${esc(r.sub)}</small>`:""}</td>${cells}<td class="tot">${num(r.total,false,r.color)}</td></tr>`;
+    const can=r.kids&&r.kids.length, open=can&&yOpen.has(r.key);
+    let h=tr(r,[r.cls||"",can?"exp":"",open?"open":""].join(" ").trim(),!r.cls);
+    if(open) h+=r.kids.map(k=>tr(k,"cat",true)).join("");
+    return h;
   }).join("");
   $("ytable").innerHTML=head+`<tbody>${body}</tbody>`;
 }
 $("ytable").addEventListener("click",ev=>{
-  if(ev.target.closest("[data-yexp]")){yDailyOpen=!yDailyOpen; renderYearTable(); updateHints();}
+  const r=ev.target.closest("tr.exp[data-yrow]"); if(!r) return;
+  const k=r.dataset.yrow; yOpen.has(k)?yOpen.delete(k):yOpen.add(k); renderYearTable(); updateHints();
 });
 /* ---------- credit card: grace-period debt per month, shown as one row in the month's payments list ----------
    plan.card.months = {"YYYY-MM": {amount, due:"YYYY-MM-DD", paid}}. It is kept out of the budget totals:
@@ -1216,16 +1210,14 @@ function buildWorkbook(X){
   X.utils.book_append_sheet(wb,w4,"Sabit ödənişlər");
   // the year table, one sheet per year that has data
   const years=[...new Set(months.map(mk=>mk.slice(0,4)))].sort();
-  const keep=yDailyOpen; yDailyOpen=true;
   years.forEach(y=>{
-    const T=yearTable(Number(y));
-    const aoa=[[`İl ${y}`,...MONTHS,"Cəmi"],...T.rows.map(r=>r.head?[r.head.toLocaleUpperCase("az")]:[(r.cls==="cat"?"   ":"")+r.label+(r.sub?` (${r.sub})`:""),...r.vals.map(v=>v==null?"":v),r.total==null?"":r.total])];
+    const T=yearTable(Number(y)), line=(r,ind)=>[(ind?"   ":"")+r.label+(r.sub?` (${r.sub})`:""),...r.vals.map(v=>v==null?"":v),r.total==null?"":r.total];
+    const aoa=[[`İl ${y}`,...MONTHS,"Cəmi"],...T.rows.flatMap(r=>[line(r,false),...(r.kids||[]).map(k=>line(k,true))])];
     const w=X.utils.aoa_to_sheet(aoa);
     money(w,[...Array(13)].map((_,i)=>X.utils.encode_col(i+1)),2,aoa.length);
     w["!cols"]=[{wch:30},...MONTHS.map(()=>({wch:11})),{wch:12}];
     X.utils.book_append_sheet(wb,w,`İl ${y}`);
   });
-  yDailyOpen=keep;
   return wb;
 }
 $("exportBtn").onclick=async()=>{
