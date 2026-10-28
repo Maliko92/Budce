@@ -129,23 +129,23 @@ details summary{cursor:pointer;font-weight:600}
 .wamounts .wa.norm{border:1px solid color-mix(in srgb,var(--ok) 50%,transparent);background:color-mix(in srgb,var(--ok) 14%,var(--surface));color:var(--ok)}
 .wamounts .wa.low{border:1px solid color-mix(in srgb,var(--low) 50%,transparent);background:color-mix(in srgb,var(--low) 14%,var(--surface));color:var(--low)}
 .wamounts .wa.sel.over,.wamounts .wa.sel.norm,.wamounts .wa.sel.low{box-shadow:0 0 0 2px var(--accent);font-weight:700}
-.wlegend{display:flex;justify-content:center;gap:14px;font-size:.72rem;color:var(--muted);margin-top:-2px}
-.wlegend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
+
 .wamounts .wa.fut{opacity:.35}
 .weekhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .weekhead strong{text-align:center}
 .weektotal{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:9px 12px;border-radius:10px;background:var(--accent-soft);font-size:.9rem}
 .weektotal b{font-family:var(--f-num);font-size:1.1rem;color:var(--accent);white-space:nowrap}
-/* today's spending limit on the Day page */
-.limit{gap:8px}
-.limtop{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.limtop .label{font-size:.74rem}
-.limbig{font-family:var(--f-num);font-size:1.9rem;font-weight:700;color:var(--ok);line-height:1;white-space:nowrap}
+/* the day's and the week's limit, side by side, under the week strip */
+.limbox{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.limcol{display:flex;flex-direction:column;gap:6px;padding:12px 14px;min-width:0}
+.limcol+.limcol{border-left:1px solid var(--line)}
+.limcol .label{font-size:.7rem}
+.limbig{font-family:var(--f-num);font-size:1.6rem;font-weight:700;color:var(--ok);line-height:1.05;white-space:nowrap}
 .limbig.bad{color:var(--bad)}
-.limrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
-.limrow b{font-family:var(--f-num);color:var(--fg)}
-.limrow b.ok{color:var(--ok)} .limrow b.bad{color:var(--bad)}
-.limcalc{font-size:.8rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:7px}
+.limcol .track{margin-top:0;height:6px}
+.limfoot{font-size:.8rem;color:var(--muted);line-height:1.35}
+.limfoot b{font-family:var(--f-num);color:var(--fg);font-weight:600}
+.limfoot b.ok{color:var(--ok)} .limfoot b.bad{color:var(--bad)}
 .weekstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .wd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;font:inherit;min-width:0}
 .wdn{font-size:.64rem;color:var(--muted);white-space:nowrap}
@@ -372,8 +372,12 @@ details summary{cursor:pointer;font-weight:600}
     </div>
     <div class="weekstrip" id="weekStrip" role="tablist" aria-label="Həftənin günləri"></div>
     <div class="weekstrip wamounts" id="weekAmts" aria-hidden="true"></div>
-    <div class="wlegend" aria-hidden="true"><span><i style="background:var(--bad)"></i>limitdən çox</span><span><i style="background:var(--ok)"></i>normal</span><span><i style="background:var(--low)"></i>az</span></div>
-    <div class="weektotal" id="weekTotal"></div>
+    <div class="limbox" id="limBox">
+      <div class="limcol"><span class="label" id="limDLbl">Bu gün</span><span class="limbig" id="limDNum">0 ₼</span>
+        <div class="track"><div class="fill" id="limDBar" style="width:0%"></div></div><div class="limfoot" id="limDFoot"></div></div>
+      <div class="limcol"><span class="label" id="limWLbl">Bu həftə</span><span class="limbig" id="limWNum">0 ₼</span>
+        <div class="track"><div class="fill" id="limWBar" style="width:0%"></div></div><div class="limfoot" id="limWFoot"></div></div>
+    </div>
   </div>
   <div class="month" id="monthNav" hidden>
     <button class="btn" id="prev" aria-label="Əvvəlki ay">‹</button>
@@ -395,11 +399,6 @@ details summary{cursor:pointer;font-weight:600}
         <button class="btn primary" id="welcomeRestore" type="button">Faylı seç və köçür</button>
         <button class="btn" id="welcomeSkip" type="button">Sıfırdan başla</button>
       </div>
-    </section>
-    <section class="panel limit" aria-label="Bu gün xərcləyə bilərsiniz">
-      <div class="limtop"><span class="label">Bu gün xərcləyə bilərsiniz</span><span class="limbig" id="limDay">0 ₼</span></div>
-      <div class="track"><div class="fill" id="limBar" style="width:0%"></div></div>
-      <div class="limrow"><span>Bu gün xərclənib <b id="limSpent">0 ₼</b></span><span id="limLeftWrap">Qalıb <b id="limLeft">0 ₼</b></span></div>
     </section>
     <section class="panel" aria-label="Xərc əlavə et">
       <h2 id="formTitle">Bu günün xərcini yazın</h2>
@@ -841,13 +840,12 @@ function dayLimit(day=TODAY){
   const daily=free>0?Math.floor(free/daysLeft):0;
   return {mk,inc,fixed,before,today,left,res,free,daily,daysLeft,est:!incomeSet(mk)};
 }
-function renderLimit(){
-  const L=dayLimit(), rest=rnd2(L.daily-L.today);
-  $("limDay").textContent=fmt0(L.daily)+" ₼"; $("limDay").className="limbig"+(L.daily<=0?" bad":"");
-  $("limSpent").textContent=fmt0(L.today)+" ₼";
-  $("limLeftWrap").innerHTML=rest>=0?`Qalıb <b class="ok">${fmt0(rest)} ₼</b>`:`Artıq xərclənib <b class="bad">${fmt0(-rest)} ₼</b>`;
-  const pct=L.daily>0?Math.min(100,L.today/L.daily*100):(L.today>0?100:0);
-  $("limBar").style.width=pct+"%"; $("limBar").className="fill"+(rest<0?" bad":pct>=80?" warn":"");
+function limCol(p,label,lim,sp){
+  const rest=rnd2(lim-sp), pct=lim>0?Math.min(100,sp/lim*100):(sp>0?100:0);
+  $(p+"Lbl").textContent=label;
+  $(p+"Num").textContent=fmt0(lim)+" ₼"; $(p+"Num").className="limbig"+(lim<=0?" bad":"");
+  $(p+"Bar").style.width=pct+"%"; $(p+"Bar").className="fill"+(rest<0?" bad":pct>=80?" warn":"");
+  $(p+"Foot").innerHTML=`xərc <b>${fmt0(sp)} ₼</b> · `+(rest>=0?`qalıb <b class="ok">${fmt0(rest)} ₼</b>`:`artıq <b class="bad">${fmt0(-rest)} ₼</b>`);
 }
 function renderDay(){
   const [y,m,d]=dSel.split("-").map(Number);
@@ -875,8 +873,13 @@ function renderDay(){
     return `<div class="${cls}">${fut?"":(sp?(sp>=100?Math.round(sp):Math.round(sp*10)/10):0)+" ₼"}</div>`;
   }).join("");
   // the whole week's spending (Monday–Sunday)
+  // the selected day's limit, and the week's: the days so far with their own limits, the days ahead at the month's pace
   const wSum=rnd2(days7.reduce((t,x)=>t+x.sp,0)), thisWeek=days7.some(x=>x.k===TODAY);
-  $("weekTotal").innerHTML=`<span>${thisWeek?"Bu həftə xərclənib":"Həftənin cəmi"}<span class="sub"> · ${ws.getDate()} ${SHORT[ws.getMonth()]} – ${we.getDate()} ${SHORT[we.getMonth()]}</span></span><b>${fmt(wSum)} ₼</b>`;
+  // days still ahead get the pace of the first day ahead in their month, so the money left is not counted twice
+  const pace={}, dl=dayLimit(dSel);
+  const wLim=days7.reduce((t,x)=>{if(x.k<=TODAY) return t+dayLimit(x.k).daily; const mk=x.k.slice(0,7); if(pace[mk]==null) pace[mk]=dayLimit(x.k).daily; return t+pace[mk];},0);
+  limCol("limD",isToday?"Bu gün":`${d} ${SHORT[m-1]}`,dl.daily,dl.today);
+  limCol("limW",thisWeek?"Bu həftə":`${ws.getDate()} ${SHORT[ws.getMonth()]} – ${we.getDate()} ${SHORT[we.getMonth()]}`,wLim,wSum);
   $("formTitle").textContent=isToday?"Bu günün xərcini yazın":`${dLabel} üçün xərc yazın`;
 
   const items=expenses.filter(e=>e.date===dSel).sort((a,b)=>(b.created||0)-(a.created||0));
@@ -889,7 +892,6 @@ function renderDay(){
     <button class="x" type="button" data-edit="${e.id}" aria-label="Düzəlt">✎</button>
     <button class="x" type="button" data-del="${e.id}" aria-label="Sil">×</button></li>`).join("")
     :`<li class="empty">${isToday?"Bu gün hələ xərc yazılmayıb. Yuxarıdakı formadan əlavə edin.":"Bu gün üçün xərc yazılmayıb."}</li>`;
-  renderLimit();
 }
 
 function renderMonth(){
