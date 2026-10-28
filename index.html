@@ -140,10 +140,11 @@ details summary{cursor:pointer;font-weight:600}
 .limcol{display:flex;flex-direction:column;gap:6px;padding:12px 14px;min-width:0}
 .limcol+.limcol{border-left:1px solid var(--line)}
 .limcol .label{font-size:.7rem}
-.limbig{font-family:var(--f-num);font-size:1.6rem;font-weight:700;color:var(--ok);line-height:1.05;white-space:nowrap}
-.limbig.bad{color:var(--bad)}
+.limbig{font-family:var(--f-num);font-size:1.6rem;font-weight:700;color:var(--fg);line-height:1.05;white-space:nowrap}
+.limbig.warn{color:var(--warn)} .limbig.bad{color:var(--bad)}
 .limcol .track{margin-top:0;height:6px}
-.limfoot{font-size:.8rem;color:var(--muted);line-height:1.35}
+.limfoot{font-size:.8rem;color:var(--muted);line-height:1.35;display:flex;flex-wrap:wrap;column-gap:10px}
+.limfoot span{white-space:nowrap}
 .limfoot b{font-family:var(--f-num);color:var(--fg);font-weight:600}
 .limfoot b.ok{color:var(--ok)} .limfoot b.bad{color:var(--bad)}
 .weekstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
@@ -839,11 +840,11 @@ function dayLimit(day=TODAY){
   return {mk,free,daily,today,daysIn};
 }
 function limCol(p,label,lim,sp){
-  const rest=rnd2(lim-sp), pct=lim>0?Math.min(100,sp/lim*100):(sp>0?100:0);
+  const rest=rnd2(lim-sp), pct=lim>0?Math.min(100,sp/lim*100):(sp>0?100:0), st=rest<0?"bad":pct>=80?"warn":"";
   $(p+"Lbl").textContent=label;
-  $(p+"Num").textContent=fmt0(lim)+" ₼"; $(p+"Num").className="limbig"+(lim<=0?" bad":"");
-  $(p+"Bar").style.width=pct+"%"; $(p+"Bar").className="fill"+(rest<0?" bad":pct>=80?" warn":"");
-  $(p+"Foot").innerHTML=`xərc <b>${fmt0(sp)} ₼</b> · `+(rest>=0?`qalıb <b class="ok">${fmt0(rest)} ₼</b>`:`artıq <b class="bad">${fmt0(-rest)} ₼</b>`);
+  $(p+"Num").textContent=fmt0(sp)+" ₼"; $(p+"Num").className="limbig"+(st?" "+st:"");
+  $(p+"Bar").style.width=pct+"%"; $(p+"Bar").className="fill"+(st?" "+st:"");
+  $(p+"Foot").innerHTML=`<span>limit <b>${fmt0(lim)} ₼</b></span>`+(rest>=0?`<span>qalıb <b class="ok">${fmt0(rest)} ₼</b></span>`:`<span>artıq <b class="bad">${fmt0(-rest)} ₼</b></span>`);
 }
 function renderDay(){
   const [y,m,d]=dSel.split("-").map(Number);
@@ -874,8 +875,8 @@ function renderDay(){
   // the selected day's limit, and the week's: seven daily limits
   const wSum=rnd2(days7.reduce((t,x)=>t+x.sp,0)), thisWeek=days7.some(x=>x.k===TODAY);
   const dl=dayLimit(dSel), wLim=days7.reduce((t,x)=>t+dayLimit(x.k).daily,0);
-  limCol("limD",isToday?"Bu gün":`${d} ${SHORT[m-1]}`,dl.daily,dl.today);
-  limCol("limW",thisWeek?"Bu həftə":`${ws.getDate()} ${SHORT[ws.getMonth()]} – ${we.getDate()} ${SHORT[we.getMonth()]}`,wLim,wSum);
+  limCol("limD",isToday?"Bu gün xərclənib":`${d} ${SHORT[m-1]} xərclənib`,dl.daily,dl.today);
+  limCol("limW",thisWeek?"Bu həftə xərclənib":`${ws.getDate()} ${SHORT[ws.getMonth()]} – ${we.getDate()} ${SHORT[we.getMonth()]}`,wLim,wSum);
   $("formTitle").textContent=isToday?"Bu günün xərcini yazın":`${dLabel} üçün xərc yazın`;
 
   const items=expenses.filter(e=>e.date===dSel).sort((a,b)=>(b.created||0)-(a.created||0));
