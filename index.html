@@ -872,9 +872,10 @@ function renderDay(){
     return `<div class="${cls}">${fut?"":(sp?(sp>=100?Math.round(sp):Math.round(sp*10)/10):0)+" ₼"}</div>`;
   }).join("");
   // the whole week's spending (Monday–Sunday)
-  // the selected day's limit, and the week's: seven daily limits
+  // the day: its own fixed limit. The week: the limits of the days so far (today included), so what was not
+  // spent on earlier days adds up and shows as "qalıb" (day 1: limit 10, spent 5 → day 2 the week has 15 left)
   const wSum=rnd2(days7.reduce((t,x)=>t+x.sp,0)), thisWeek=days7.some(x=>x.k===TODAY);
-  const dl=dayLimit(dSel), wLim=days7.reduce((t,x)=>t+dayLimit(x.k).daily,0);
+  const dl=dayLimit(dSel), wLim=days7.reduce((t,x)=>t+(x.k<=TODAY?dayLimit(x.k).daily:0),0);
   limCol("limD",isToday?"Bu gün xərclənib":`${d} ${SHORT[m-1]} xərclənib`,dl.daily,dl.today);
   limCol("limW",thisWeek?"Bu həftə xərclənib":`${ws.getDate()} ${SHORT[ws.getMonth()]} – ${we.getDate()} ${SHORT[we.getMonth()]}`,wLim,wSum);
   $("formTitle").textContent=isToday?"Bu günün xərcini yazın":`${dLabel} üçün xərc yazın`;
