@@ -827,18 +827,16 @@ function render(){
   if(view==="year") renderYear();
 }
 
-/* ---------- today's limit: this month's money left, minus the reserve, shared over the days left (today included)
-   money left = income − all fixed payments of the month (paid or not) − daily spending before today.
-   Today's own spending is then taken from today's share, so the share does not move while you write. */
+/* ---------- the daily limit: one fixed amount per day for the whole month
+   (income − all fixed payments of the month − the reserve) ÷ days in the month.
+   Each day stands on its own: money not spent one day is not added to the next, and overspending does not cut it. */
 const reserveOf=()=>plan.reserve==null?200:Number(plan.reserve)||0;
 function dayLimit(day=TODAY){
-  const mk=day.slice(0,7), [y,m,d]=day.split("-").map(Number), daysIn=new Date(y,m,0).getDate(), daysLeft=daysIn-d+1;
-  const inc=totalIncome(mk), fixed=fixedTotalFor(mk);
-  const before=rnd2(sumAmt(expenses.filter(e=>e.month===mk&&e.date<day)));
+  const mk=day.slice(0,7), [y,m]=day.split("-").map(Number), daysIn=new Date(y,m,0).getDate();
+  const free=rnd2(totalIncome(mk)-fixedTotalFor(mk)-reserveOf());
+  const daily=free>0?Math.floor(free/daysIn):0;
   const today=rnd2(sumAmt(expenses.filter(e=>e.date===day)));
-  const left=rnd2(inc-fixed-before), res=reserveOf(), free=rnd2(left-res);
-  const daily=free>0?Math.floor(free/daysLeft):0;
-  return {mk,inc,fixed,before,today,left,res,free,daily,daysLeft,est:!incomeSet(mk)};
+  return {mk,free,daily,today,daysIn};
 }
 function limCol(p,label,lim,sp){
   const rest=rnd2(lim-sp), pct=lim>0?Math.min(100,sp/lim*100):(sp>0?100:0);
@@ -873,11 +871,9 @@ function renderDay(){
     return `<div class="${cls}">${fut?"":(sp?(sp>=100?Math.round(sp):Math.round(sp*10)/10):0)+" ₼"}</div>`;
   }).join("");
   // the whole week's spending (Monday–Sunday)
-  // the selected day's limit, and the week's: the days so far with their own limits, the days ahead at the month's pace
+  // the selected day's limit, and the week's: seven daily limits
   const wSum=rnd2(days7.reduce((t,x)=>t+x.sp,0)), thisWeek=days7.some(x=>x.k===TODAY);
-  // days still ahead get the pace of the first day ahead in their month, so the money left is not counted twice
-  const pace={}, dl=dayLimit(dSel);
-  const wLim=days7.reduce((t,x)=>{if(x.k<=TODAY) return t+dayLimit(x.k).daily; const mk=x.k.slice(0,7); if(pace[mk]==null) pace[mk]=dayLimit(x.k).daily; return t+pace[mk];},0);
+  const dl=dayLimit(dSel), wLim=days7.reduce((t,x)=>t+dayLimit(x.k).daily,0);
   limCol("limD",isToday?"Bu gün":`${d} ${SHORT[m-1]}`,dl.daily,dl.today);
   limCol("limW",thisWeek?"Bu həftə":`${ws.getDate()} ${SHORT[ws.getMonth()]} – ${we.getDate()} ${SHORT[we.getMonth()]}`,wLim,wSum);
   $("formTitle").textContent=isToday?"Bu günün xərcini yazın":`${dLabel} üçün xərc yazın`;
