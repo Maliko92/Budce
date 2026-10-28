@@ -130,6 +130,16 @@ details summary{cursor:pointer;font-weight:600}
 .weekhead strong{text-align:center}
 .weektotal{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:9px 12px;border-radius:10px;background:var(--accent-soft);font-size:.9rem}
 .weektotal b{font-family:var(--f-num);font-size:1.1rem;color:var(--accent);white-space:nowrap}
+/* today's spending limit on the Day page */
+.limit{gap:8px}
+.limtop{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.limtop .label{font-size:.74rem}
+.limbig{font-family:var(--f-num);font-size:1.9rem;font-weight:700;color:var(--ok);line-height:1;white-space:nowrap}
+.limbig.bad{color:var(--bad)}
+.limrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+.limrow b{font-family:var(--f-num);color:var(--fg)}
+.limrow b.ok{color:var(--ok)} .limrow b.bad{color:var(--bad)}
+.limcalc{font-size:.8rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:7px}
 .weekstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .wd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;font:inherit;min-width:0}
 .wdn{font-size:.64rem;color:var(--muted);white-space:nowrap}
@@ -379,6 +389,12 @@ details summary{cursor:pointer;font-weight:600}
         <button class="btn" id="welcomeSkip" type="button">Sıfırdan başla</button>
       </div>
     </section>
+    <section class="panel limit" aria-label="Bu gün xərcləyə bilərsiniz">
+      <div class="limtop"><span class="label">Bu gün xərcləyə bilərsiniz</span><span class="limbig" id="limDay">0 ₼</span></div>
+      <div class="track"><div class="fill" id="limBar" style="width:0%"></div></div>
+      <div class="limrow"><span>Bu gün xərclənib <b id="limSpent">0 ₼</b></span><span id="limLeftWrap">Qalıb <b id="limLeft">0 ₼</b></span></div>
+      <div class="limcalc" id="limCalc"></div>
+    </section>
     <section class="panel" aria-label="Xərc əlavə et">
       <h2 id="formTitle">Bu günün xərcini yazın</h2>
       <form class="add" id="addForm">
@@ -553,10 +569,10 @@ const DEFAULT_PLAN = {
     {key:"k15", name:"İstehlak krediti 15 000 (12,5%)", amount:398.70, day:21},
     {key:"taksit", name:"Birkart taksit", amount:227.15, day:null},
     {key:"qaz", name:"Qaz", amount:0, day:null, variable:true, group:"kommunal"},
-    {key:"su", name:"Su", amount:0, day:null, variable:true, group:"kommunal"},
-    {key:"isiq", name:"İşıq", amount:0, day:null, variable:true, group:"kommunal"},
-    {key:"internet", name:"İnternet", amount:0, day:null, variable:true, group:"kommunal"},
-    {key:"mida", name:"MİDA kommunal", amount:0, day:null, variable:true, group:"kommunal"},
+    {key:"su", name:"Su", amount:16, day:null, variable:true, group:"kommunal"},
+    {key:"isiq", name:"İşıq", amount:20, day:null, variable:true, group:"kommunal"},
+    {key:"internet", name:"İnternet", amount:40, day:null, variable:true, group:"kommunal"},
+    {key:"mida", name:"MİDA kommunal", amount:17, day:null, variable:true, group:"kommunal"},
     {key:"bagca", name:"Uşaq bağçası", amount:150, day:null}
   ],
   cats: [
@@ -568,7 +584,8 @@ const DEFAULT_PLAN = {
     {key:"saglam", name:"Dərman, sağlamlıq", limit:80},
     {key:"geyim", name:"Geyim", limit:100}
   ],
-  card: {name:"Birkart", limit:10000, taksit:"taksit", months:{}}
+  card: {name:"Birkart", limit:10000, taksit:"taksit", months:{}},
+  reserve: 200
 };
 const $ = id => document.getElementById(id);
 const fmt = n => (Math.round(n*100)/100).toLocaleString("az-AZ",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -669,6 +686,14 @@ function migrateV10(){
   if(f&&!f.debt) f.debt={total:21339.45,from:"2026-11",left:21339.45,pay:484.70,payoff:19816.84,rate:4,start:"2021-07"};
   plan.v10=true; lsSet("plan",plan);
 }
+// one-time: utility estimates from the family's 2026 Excel (monthly averages) where none were set, and the 200 ₼ reserve
+function migrateV11(){
+  if(plan.v11) return;
+  const EST={su:16,isiq:20,internet:40,mida:17};
+  plan.fixed.forEach(f=>{if(EST[f.key]!=null&&!(Number(f.amount)>0)) f.amount=EST[f.key];});
+  if(plan.reserve==null) plan.reserve=200;
+  plan.v11=true; lsSet("plan",plan);
+}
 function migrateV8(){
   if(plan.v8) return;
   const fi=plan.cats.findIndex(c=>c.key==="fond");
@@ -717,7 +742,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{});
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -797,6 +822,32 @@ function render(){
   if(view==="year") renderYear();
 }
 
+/* ---------- today's limit: this month's money left, minus the reserve, shared over the days left (today included)
+   money left = income − all fixed payments of the month (paid or not) − daily spending before today.
+   Today's own spending is then taken from today's share, so the share does not move while you write. */
+const reserveOf=()=>plan.reserve==null?200:Number(plan.reserve)||0;
+function dayLimit(){
+  const mk=TODAY.slice(0,7), [y,m,d]=TODAY.split("-").map(Number), daysIn=new Date(y,m,0).getDate(), daysLeft=daysIn-d+1;
+  const inc=totalIncome(mk), fixed=fixedTotalFor(mk);
+  const before=rnd2(sumAmt(expenses.filter(e=>e.month===mk&&e.date<TODAY)));
+  const today=rnd2(sumAmt(expenses.filter(e=>e.date===TODAY)));
+  const left=rnd2(inc-fixed-before), res=reserveOf(), free=rnd2(left-res);
+  const daily=free>0?Math.floor(free/daysLeft):0;
+  return {mk,inc,fixed,before,today,left,res,free,daily,daysLeft,est:!incomeSet(mk)};
+}
+function renderLimit(){
+  const L=dayLimit(), rest=rnd2(L.daily-L.today);
+  $("limDay").textContent=fmt0(L.daily)+" ₼"; $("limDay").className="limbig"+(L.daily<=0?" bad":"");
+  $("limSpent").textContent=fmt0(L.today)+" ₼";
+  $("limLeftWrap").innerHTML=rest>=0?`Qalıb <b class="ok">${fmt0(rest)} ₼</b>`:`Artıq xərclənib <b class="bad">${fmt0(-rest)} ₼</b>`;
+  const pct=L.daily>0?Math.min(100,L.today/L.daily*100):(L.today>0?100:0);
+  $("limBar").style.width=pct+"%"; $("limBar").className="fill"+(rest<0?" bad":pct>=80?" warn":"");
+  const g=L.daysLeft===1?"bu gün ayın son günüdür":`${L.daysLeft} günə bölünür`;
+  $("limCalc").textContent=L.free>0
+    ?`Ayın qalan pulu ${fmt0(L.left)} − ${fmt0(L.res)} ehtiyat = ${fmt0(L.free)} ₼, ${g}`+(L.est?` · maaş yazılmayıb, ${fmt0(plan.income)} sayılır`:"")
+    :L.left>0?`Ayın qalan pulu ${fmt0(L.left)} ₼ — ${fmt0(L.res)} ₼ ehtiyatdan azdır`
+    :`Bu ay xərclər gəliri ${fmt0(-L.left)} ₼ keçib`;
+}
 function renderDay(){
   const [y,m,d]=dSel.split("-").map(Number);
   const isToday=dSel===TODAY;
@@ -836,6 +887,7 @@ function renderDay(){
     <button class="x" type="button" data-edit="${e.id}" aria-label="Düzəlt">✎</button>
     <button class="x" type="button" data-del="${e.id}" aria-label="Sil">×</button></li>`).join("")
     :`<li class="empty">${isToday?"Bu gün hələ xərc yazılmayıb. Yuxarıdakı formadan əlavə edin.":"Bu gün üçün xərc yazılmayıb."}</li>`;
+  renderLimit();
 }
 
 function renderMonth(){
@@ -1272,7 +1324,7 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10();
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat==="fond"&&!plan.cats.some(c=>c.key==="fond")?"diger":e.cat}));
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
@@ -1380,6 +1432,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 document.querySelector('section[aria-label="Tənzimləmələr"] details').addEventListener("toggle",ev=>{if(ev.target.open) fillSettings()});
 function fillSettings(){
   let h=`<label for="setIncome">Adi aylıq gəlir</label><input id="setIncome" type="number" step="0.01" value="${plan.income}">`;
+  h+=`<label for="setReserve">Ayın sonunda ehtiyat, ₼</label><input id="setReserve" type="number" step="1" min="0" value="${reserveOf()}">`;
   if(plan.card) h+=`<label for="setCardLimit">${esc(plan.card.name||"Kart")} limiti</label><input id="setCardLimit" type="number" step="1" value="${plan.card.limit||0}">`;
   h+=`<div class="label" style="grid-column:1/-1;margin-top:6px">Sabit ödənişlər</div>`;
   h+=`<div class="sub" style="grid-column:1/-1">Kredit deyilsə, bank və borc xanalarını boş qoyun.</div>`;
@@ -1487,6 +1540,7 @@ $("noteSugg").addEventListener("click",ev=>{
 $("saveSettings").onclick=async()=>{
   const p=structuredClone(plan);
   p.income=parseFloat($("setIncome").value)||0;
+  {const r=parseFloat($("setReserve").value); p.reserve=r>=0?r:200;}
   if(p.card&&$("setCardLimit")) p.card.limit=parseFloat($("setCardLimit").value)||0;
   p.fixed.forEach(f=>{
     f.amount=parseFloat($("sf_"+f.key).value)||0;
