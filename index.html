@@ -159,6 +159,27 @@ details summary{cursor:pointer;font-weight:600}
 .wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
 .hero4{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+/* car log */
+.cartop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.carfilter{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+.carfilter select{width:auto;max-width:210px;padding:6px 8px}
+.ctable{width:max-content;min-width:100%;border-collapse:collapse;font-size:.86rem}
+.ctable th,.ctable td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+.ctable th+th,.ctable td+td{border-left:1px solid var(--line)}
+.ctable thead th{font-size:.74rem;color:var(--accent);font-weight:700;background:var(--accent-soft);white-space:nowrap;text-align:center}
+.ctable th:first-child,.ctable td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);white-space:nowrap;box-shadow:1px 0 0 var(--line)}
+.ctable thead th:first-child{background:var(--accent-soft)}
+.ctable td.n{text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ctable td.w{min-width:180px;max-width:250px}
+.ctable td.w div{white-space:pre-line}
+.ctable td.p{min-width:120px;max-width:180px;color:var(--muted)}
+.ctable td small{display:block;color:var(--muted);font-size:.74rem;font-family:var(--f-body)}
+.ctable td.tot{font-weight:700}
+.ctable tr.cy td{background:var(--bg);font-weight:700;color:var(--accent);border-bottom:2px solid var(--line)}
+.ctable tr.cy td:first-child{background:var(--bg)}
+.ctable tbody tr.crow{cursor:pointer}
+.ctable tbody tr.crow:hover td{background:var(--accent-soft)}
+.sheet-card.tall{max-height:88vh;overflow:auto}
 /* the year's four totals, one under another, set like headings */
 .ysum{display:flex;flex-direction:column}
 .yrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
@@ -387,6 +408,7 @@ details summary{cursor:pointer;font-weight:600}
       <button class="tab" id="tabDay" role="tab" aria-selected="true">Gün</button>
       <button class="tab" id="tabMonth" role="tab" aria-selected="false">Ay</button>
       <button class="tab" id="tabYear" role="tab" aria-selected="false">İl</button>
+      <button class="tab" id="tabCar" role="tab" aria-selected="false">Avto</button>
     </div>
   </div>
 
@@ -529,6 +551,26 @@ details summary{cursor:pointer;font-weight:600}
     </section>
   </div>
 
+  <!-- AVTO -->
+  <div class="view" id="carView" hidden>
+    <section class="panel" aria-label="Avtomobil xərcləri">
+      <div class="ysum">
+        <div class="yrow"><span class="ylbl" id="carYearLbl">Bu il</span><b class="num" id="carYear">0 ₼</b></div>
+        <div class="yrow"><span class="ylbl" id="carAllLbl">Cəmi</span><b class="num" id="carAll">0 ₼</b></div>
+        <div class="yrow"><span class="ylbl">Son yürüş</span><span class="yval"><b class="num" id="carOdo">—</b><span class="sub" id="carOdoSub"></span></span></div>
+      </div>
+    </section>
+    <section class="panel" aria-label="Təmir və dəyişmələr">
+      <div class="cartop"><h2>Təmir və dəyişmələr</h2><button class="btn primary" type="button" id="carAdd">+ Yeni qeyd</button></div>
+      <label class="carfilter">Hissə <select id="carFilter"><option value="">Hamısı</option></select></label>
+      <div class="tscroll"><table class="ctable" id="carTable"></table></div>
+    </section>
+    <section class="panel" aria-label="Excel-dən köçür">
+      <div class="cartop"><span class="sub">Köhnə Excel cədvəlinizi ("Golf mk 4" vərəqi) bura köçürə bilərsiniz.</span><button class="btn" type="button" id="carImport">Excel-dən köçür</button></div>
+      <input type="file" id="carFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+    </section>
+  </div>
+
   <section class="panel" id="backupPanel" aria-label="Ehtiyat nüsxə" hidden>
     <div><h2>Ehtiyat nüsxə</h2>
       <div class="sub">Məlumatlar yalnız bu telefonda saxlanılır. Telefonu dəyişəndə və ya brauzeri təmizləyəndə itməsin deyə ayda bir dəfə ehtiyat nüsxə saxlayın (fayl "Yükləmələr" qovluğuna düşür).</div></div>
@@ -592,6 +634,27 @@ details summary{cursor:pointer;font-weight:600}
     <div class="field"><label class="label" for="bsAmount">Bu ayın məbləği, ₼</label><input id="bsAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
     <label class="chk"><input type="checkbox" id="bsPaid"> Ödənilib</label>
     <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn" type="button" id="bsClose">Bağla</button></div>
+  </form>
+</div>
+<div class="sheet" id="carSheet" hidden>
+  <form class="sheet-card tall" id="csForm">
+    <h2 id="csTitle">Yeni qeyd</h2>
+    <div class="gsrow">
+      <div class="field"><label class="label" for="csDate">Tarix</label><input id="csDate" type="date" required></div>
+      <div class="field"><label class="label" for="csOdo">Yürüş, mil</label><input id="csOdo" type="number" inputmode="numeric" step="1" min="0" placeholder="—"></div>
+    </div>
+    <div class="field"><label class="label" for="csPart">Hissə</label><input id="csPart" type="text" list="csParts" autocomplete="off" placeholder="Motor, Xadavoy, Soyutma sistemi…"></div>
+    <div class="field"><label class="label" for="csWork">Nə dəyişib / görülən iş</label><input id="csWork" type="text" autocomplete="off" placeholder="Yağı dəyişdi"></div>
+    <div class="field"><label class="label" for="csBrand">Detal, marka</label><input id="csBrand" type="text" autocomplete="off" placeholder="Meguin 5W-40"></div>
+    <div class="field"><label class="label" for="csPlace">Usta / yer</label><input id="csPlace" type="text" list="csPlaces" autocomplete="off" placeholder="Avtoklub"></div>
+    <div class="gsrow">
+      <div class="field"><label class="label" for="csCost">Detalın pulu, ₼</label><input id="csCost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      <div class="field"><label class="label" for="csLabor">Usta pulu, ₼</label><input id="csLabor" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+    </div>
+    <div class="field"><label class="label" for="csNext">Növbəti dəfə (istəyə görə)</label><input id="csNext" type="text" autocomplete="off" placeholder="230 000 mil-də yağ"></div>
+    <label class="chk" id="csExpWrap"><input type="checkbox" id="csExp" checked> Gündəlik xərclərə də yaz (Avto)</label>
+    <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn danger" type="button" id="csDelete">Sil</button><button class="btn" type="button" id="csClose">Bağla</button></div>
+    <datalist id="csParts"></datalist><datalist id="csPlaces"></datalist>
   </form>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -784,7 +847,7 @@ function migrateBanks(){
   plan.bankSeeded=true; lsSet("plan",plan);
 }
 async function boot(){
-  plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{});
+  plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{}); car=lsGet("car",[]);
   migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
@@ -869,6 +932,7 @@ function render(){
   renderDay();
   renderMonth();
   if(view==="year") renderYear();
+  if(view==="car") renderCar();
 }
 
 /* ---------- the daily limit: one fixed amount per day for the whole month
@@ -1189,6 +1253,130 @@ function renderYear(){
 
   autoScroll();
 }
+/* ---------- car log: what was changed on the car, when, at what mileage, what the part and the work cost ----------
+   Stored apart from the budget (this phone, or budget/car on the Claude page). A new record can also be written
+   as an "Avto" expense of that day; the two stay linked (editing or deleting the record changes the expense too). */
+let car=[], carFilter="", csId=null;
+const MI=1.609344;
+const carTotal=r=>rnd2(Number(r.partCost||0)+Number(r.labor||0));
+async function saveCar(){ if(store==="db"){await db.doc("budget/car").set({items:car})} else lsSet("car",car); }
+const dFull=ds=>{const [y,m,d]=ds.split("-").map(Number); return `${d} ${SHORT[m-1]} ${y}`;};
+const carNote=r=>[r.part,r.work].filter(Boolean).join(" – ").replace(/\s+/g," ").slice(0,70);
+function renderCar(){
+  const rows=car.slice().sort((a,b)=>b.date.localeCompare(a.date)||String(b.id).localeCompare(String(a.id)));
+  const sum=l=>rnd2(l.reduce((t,r)=>t+carTotal(r),0)), y=String(now.getFullYear());
+  $("carYearLbl").textContent=`Bu il (${y})`; $("carYear").textContent=fmt0(sum(rows.filter(r=>r.date.startsWith(y))))+" ₼";
+  $("carAllLbl").textContent=rows.length?`Cəmi (${rows[rows.length-1].date.slice(0,4)}-dən)`:"Cəmi"; $("carAll").textContent=fmt0(sum(rows))+" ₼";
+  const last=rows.find(r=>Number(r.odo)>0);
+  $("carOdo").textContent=last?`${fmt0(last.odo)} mil`:"—"; $("carOdoSub").textContent=last?`${fmt0(last.odo*MI)} km · ${dFull(last.date)}`:"";
+  const parts=[...new Set(rows.map(r=>(r.part||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"az"));
+  if(carFilter&&!parts.includes(carFilter)) carFilter="";
+  $("carFilter").innerHTML=`<option value="">Hamısı</option>`+parts.map(p=>`<option value="${esc(p)}"${p===carFilter?" selected":""}>${esc(p)}</option>`).join("");
+  $("csParts").innerHTML=parts.map(p=>`<option value="${esc(p)}">`).join("");
+  $("csPlaces").innerHTML=[...new Set(rows.map(r=>(r.place||"").trim()).filter(Boolean))].map(p=>`<option value="${esc(p)}">`).join("");
+  const shown=carFilter?rows.filter(r=>(r.part||"").trim()===carFilter):rows;
+  const head=`<thead><tr><th>Tarix</th><th>Yürüş, mil</th><th>Nə dəyişib</th><th>Detal ₼</th><th>Usta ₼</th><th>Cəmi ₼</th><th>Usta / yer</th></tr></thead>`;
+  let body="", yr=null;
+  shown.forEach(r=>{
+    const ry=r.date.slice(0,4);
+    if(ry!==yr){yr=ry; const yl=shown.filter(x=>x.date.startsWith(ry)); body+=`<tr class="cy"><td>${ry}</td><td colspan="6">${fmt0(sum(yl))} ₼ · ${yl.length} qeyd</td></tr>`;}
+    body+=`<tr class="crow" data-car="${esc(r.id)}"><td>${dFull(r.date)}</td>`+
+      `<td class="n">${r.odo?fmt0(r.odo)+`<small>${fmt0(r.odo*MI)} km</small>`:""}</td>`+
+      `<td class="w"><b>${esc(r.part||"—")}</b>${r.work?`<div>${esc(r.work)}</div>`:""}${r.brand?`<small>${esc(r.brand)}</small>`:""}${r.next?`<small>Növbəti: ${esc(r.next)}</small>`:""}</td>`+
+      `<td class="n">${r.partCost?fmt(r.partCost):""}</td><td class="n">${r.labor?fmt(r.labor):""}</td><td class="n tot">${fmt(carTotal(r))}</td><td class="p">${esc(r.place||"")}</td></tr>`;
+  });
+  $("carTable").innerHTML=head+`<tbody>${body||`<tr><td colspan="7" class="empty">Hələ qeyd yoxdur. "+ Yeni qeyd" ilə əlavə edin və ya köhnə Excel cədvəlinizi köçürün.</td></tr>`}</tbody>`;
+  updateHints();
+}
+$("carFilter").onchange=ev=>{carFilter=ev.target.value; renderCar();};
+$("carTable").addEventListener("click",ev=>{const r=ev.target.closest("tr[data-car]"); if(r) openCar(r.dataset.car);});
+$("carAdd").onclick=()=>openCar(null);
+function openCar(id){
+  const r=id?car.find(x=>x.id===id):null; csId=r?r.id:null;
+  $("csTitle").textContent=r?"Qeydi düzəlt":"Yeni qeyd";
+  $("csDate").value=r?r.date:TODAY; $("csOdo").value=r&&r.odo?r.odo:"";
+  $("csPart").value=r?r.part||"":""; $("csWork").value=r?r.work||"":""; $("csBrand").value=r?r.brand||"":""; $("csPlace").value=r?r.place||"":"";
+  $("csCost").value=r&&r.partCost?r.partCost:""; $("csLabor").value=r&&r.labor?r.labor:""; $("csNext").value=r?r.next||"":"";
+  const last=car.filter(x=>Number(x.odo)>0).sort((a,b)=>b.date.localeCompare(a.date))[0]; $("csOdo").placeholder=last?String(last.odo):"—";
+  $("csExpWrap").hidden=!!r; $("csExp").checked=true;
+  $("csDelete").hidden=!r; $("csDelete").textContent="Sil"; delete $("csDelete").dataset.armed;
+  $("carSheet").hidden=false;
+}
+function closeCar(){$("carSheet").hidden=true; csId=null;}
+$("csClose").onclick=closeCar;
+$("carSheet").addEventListener("click",ev=>{if(ev.target.id==="carSheet") closeCar()});
+$("csForm").addEventListener("submit",async ev=>{
+  ev.preventDefault();
+  const num=id=>{const v=parseFloat($(id).value); return v>0?rnd2(v):0;};
+  const rec={date:$("csDate").value,odo:num("csOdo")||null,part:$("csPart").value.trim(),work:$("csWork").value.trim(),brand:$("csBrand").value.trim(),
+    place:$("csPlace").value.trim(),partCost:num("csCost"),labor:num("csLabor"),next:$("csNext").value.trim()};
+  if(!rec.date){toast("Tarixi yazın"); return;}
+  if(!rec.part&&!rec.work){toast("Nə dəyişdiyini yazın"); return;}
+  const total=rnd2(rec.partCost+rec.labor), old=csId?car.find(x=>x.id===csId):null, withExp=!old&&$("csExp").checked;
+  closeCar();
+  try{
+    if(old){
+      Object.assign(old,rec);
+      if(old.expId&&expenses.some(e=>e.id===old.expId)&&total>0) await updExpense(old.expId,{date:rec.date,month:rec.date.slice(0,7),amount:total,note:carNote(old)});
+    }else{
+      const r={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),...rec};
+      if(withExp&&total>0){const e={date:rec.date,month:rec.date.slice(0,7),cat:plan.cats.some(c=>c.key==="avto")?"avto":"diger",amount:total,note:carNote(r),created:Date.now()};
+        await addExpense(e); r.expId=e.id;}
+      car.push(r);
+    }
+    renderCar(); await saveCar(); toast(old?"Düzəldildi":"Əlavə edildi");
+  }catch(x){toast("Yadda saxlanmadı")}
+});
+$("csDelete").onclick=async()=>{
+  const b=$("csDelete"); if(!csId) return;
+  if(!b.dataset.armed){b.dataset.armed="1"; b.textContent="Silinsin? Bəli"; return;}
+  const r=car.find(x=>x.id===csId); closeCar(); if(!r) return;
+  car=car.filter(x=>x.id!==r.id); renderCar();
+  try{ if(r.expId&&expenses.some(e=>e.id===r.expId)) await delExpense(r.expId); await saveCar(); toast("Silindi"); }catch(x){toast("Silinmədi")}
+};
+// import the old Excel log: the sheet whose header has "Tarix" and "Yürüş" (Golf mk 4)
+function toISO(v){
+  if(typeof v==="number"&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5)); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;}
+  if(v instanceof Date&&!isNaN(v)) return `${v.getFullYear()}-${pad(v.getMonth()+1)}-${pad(v.getDate())}`;
+  if(typeof v==="string"){const m=v.trim().match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/); if(m) return `${m[3]}-${pad(+m[2])}-${pad(+m[1])}`;}
+  return null;
+}
+function carFromWorkbook(X,wb){
+  for(const name of wb.SheetNames){
+    const rows=X.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:null});
+    for(let h=0;h<Math.min(rows.length,6);h++){
+      const H=(rows[h]||[]).map(v=>norm(v==null?"":String(v))), col=t=>H.findIndex(t);
+      const cDate=col(t=>t.includes("tarix"));
+      let cOdo=col(t=>t.includes("yurus")&&t.includes("mil")); if(cOdo<0) cOdo=col(t=>t.includes("yurus"));
+      if(cDate<0||cOdo<0) continue;
+      const cNext=col(t=>t.includes("novbeti")), cPart=col(t=>t.includes("hisse")), cWork=col(t=>t.includes("gorulen")), cBrand=col(t=>t.startsWith("adi")),
+        cPlace=col(t=>t.includes("mekan")), cLab=col(t=>t.includes("usta")), cTot=col(t=>t.includes("yekun")),
+        cPrice=col(t=>t.includes("qiymet")&&!t.includes("usta")&&!t.includes("yekun"));
+      const out=[];
+      rows.slice(h+1).forEach((r,i)=>{
+        const d=toISO(r[cDate]); if(!d) return;
+        const n=c=>{if(c<0||r[c]==null) return 0; const x=typeof r[c]==="number"?r[c]:parseFloat(String(r[c]).replace(",",".")); return x>0?rnd2(x):0;};
+        const t=c=>c<0||r[c]==null?"":String(r[c]).trim();
+        let partCost=n(cPrice), labor=n(cLab); if(!partCost&&!labor) partCost=n(cTot);
+        const rec={id:"x"+(i+1)+"_"+d,date:d,odo:n(cOdo)||null,part:t(cPart),work:t(cWork),brand:t(cBrand),place:t(cPlace),partCost,labor,next:t(cNext)};
+        if(rec.part||rec.work||partCost||labor) out.push(rec);
+      });
+      if(out.length) return out;
+    }
+  }
+  return [];
+}
+$("carImport").onclick=()=>$("carFile").click();
+$("carFile").onchange=async ev=>{
+  const f=ev.target.files&&ev.target.files[0]; ev.target.value=""; if(!f) return;
+  try{
+    const X=await loadXLSX(), recs=carFromWorkbook(X,X.read(await f.arrayBuffer(),{type:"array"}));
+    if(!recs.length){toast("Faylda avtomobil cədvəli tapılmadı"); return;}
+    if(car.length&&!confirm(`İndiki ${car.length} qeyd fayldakı ${recs.length} qeydlə əvəz olunsun?`)) return;
+    car=recs; renderCar(); await saveCar(); toast(`${recs.length} qeyd köçürüldü`);
+  }catch(x){toast("Fayl oxunmadı")}
+};
+
 /* ---------- the year table: income, loans, bills, daily spending and the result, month by month ----------
    Everything is counted from what is already written: ✓ payments, the Day page and the month's income.
    Loans taken are never income here, and card purchases count once (on the Day page), so the result stays honest. */
@@ -1295,7 +1483,7 @@ window.addEventListener("resize",()=>updateHints());
 /* ---------- backup, restore, Excel ---------- */
 let XLSXP=null;
 function updBackup(){
-  $("backupPanel").hidden=view==="day";
+  $("backupPanel").hidden=view==="day"||view==="car";
   let last=null; try{last=localStorage.getItem("lastBackup")}catch(e){}
   if(last){const [y,m,d]=last.split("-"); const days=Math.floor((Date.parse(TODAY)-Date.parse(last))/864e5);
     $("lastExport").textContent=`Son ehtiyat nüsxə: ${d}.${m}.${y}`+(days>=30?" · bir aydan çox keçib, yenisini saxlayın":"");}
@@ -1350,6 +1538,17 @@ function buildWorkbook(X){
   const w4=X.utils.aoa_to_sheet(r4); money(w4,["C","D","F"],2,r4.length);
   w4["!cols"]=[{wch:30},{wch:14},{wch:18},{wch:11},{wch:12},{wch:15},...months.map(()=>({wch:14}))];
   X.utils.book_append_sheet(wb,w4,"Sabit ödənişlər");
+  if(car.length){
+    const cr=car.slice().sort((a,b)=>a.date.localeCompare(b.date));
+    const ra=[["Tarix","Yürüş (mil)","Yürüş (km)","Hissə","Görülən iş","Detal, marka","Usta / yer","Detalın pulu (₼)","Usta pulu (₼)","Cəmi (₼)","Növbəti"],
+      ...cr.map(r=>[serial(r.date),r.odo||"",r.odo?Math.round(r.odo*MI):"",r.part||"",r.work||"",r.brand||"",r.place||"",Number(r.partCost||0),Number(r.labor||0),carTotal(r),r.next||""]),
+      [],["","","","","","","Cəmi",r2d(cr.reduce((t,r)=>t+Number(r.partCost||0),0)),r2d(cr.reduce((t,r)=>t+Number(r.labor||0),0)),r2d(cr.reduce((t,r)=>t+carTotal(r),0)),""]];
+    const wc=X.utils.aoa_to_sheet(ra);
+    for(let r=2;r<=cr.length+1;r++){wc["A"+r].z="dd.mm.yyyy"}
+    money(wc,["H","I","J"],2,ra.length);
+    wc["!cols"]=[{wch:12},{wch:12},{wch:12},{wch:18},{wch:40},{wch:24},{wch:26},{wch:14},{wch:13},{wch:11},{wch:20}];
+    X.utils.book_append_sheet(wb,wc,"Avto");
+  }
   // the year table, one sheet per year that has data
   const years=[...new Set(months.map(mk=>mk.slice(0,4)))].sort();
   years.forEach(y=>{
@@ -1372,7 +1571,7 @@ $("exportBtn").onclick=async()=>{
   finally{btn.disabled=false; btn.textContent=label}
 };
 $("backupBtn").onclick=()=>{
-  const data={app:"aile-budcesi",version:1,exported:new Date().toISOString(),plan,expenses,paid};
+  const data={app:"aile-budcesi",version:1,exported:new Date().toISOString(),plan,expenses,paid,car};
   saveFile(`aile-budcesi-${TODAY}.json`,new Blob([JSON.stringify(data)],{type:"application/json"}));
   try{localStorage.setItem("lastBackup",TODAY)}catch(e){}
   updBackup(); toast("Ehtiyat nüsxə saxlanıldı");
@@ -1387,6 +1586,7 @@ function applyBackup(d,from){
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
   plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat==="fond"&&!plan.cats.some(c=>c.key==="fond")?"diger":e.cat}));
+  if(Array.isArray(d.car)){car=d.car; lsSet("car",car);}
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
   $("welcome").hidden=true;
@@ -1416,7 +1616,7 @@ async function gh(cfg,path,opt={}){
 function ghErr(e){return e&&e.status===401?"token yanlışdır və ya vaxtı bitib":e&&e.status===404?"repo tapılmadı və ya tokenin ona icazəsi yoxdur":e&&(e.status===403||e.status===422)?"tokenin yazma icazəsi yoxdur":"internet yoxdur və ya GitHub cavab vermədi"}
 async function ghBackup(cfg){
   const mk=TODAY.slice(0,7), path=`backups/aile-budcesi-${mk}.json`;
-  const data={app:"aile-budcesi",version:1,exported:new Date().toISOString(),plan,expenses,paid};
+  const data={app:"aile-budcesi",version:1,exported:new Date().toISOString(),plan,expenses,paid,car};
   let sha; try{sha=(await gh(cfg,"contents/"+path)).sha}catch(e){if(e.status!==404) throw e}
   await gh(cfg,"contents/"+path,{method:"PUT",body:JSON.stringify({message:`Ehtiyat nüsxə: ${mk}`,content:b64(JSON.stringify(data)),...(sha?{sha}:{})})});
   cfg.last=TODAY; cfg.lastPath=path; ghSet(cfg);
@@ -1476,15 +1676,17 @@ if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWo
 
 function setView(v){
   view=v;
-  $("dayView").hidden=v!=="day"; $("monthView").hidden=v!=="month"; $("yearView").hidden=v!=="year";
+  $("dayView").hidden=v!=="day"; $("monthView").hidden=v!=="month"; $("yearView").hidden=v!=="year"; $("carView").hidden=v!=="car";
   $("dayNav").hidden=v!=="day"; $("monthNav").hidden=v!=="month"; $("yearNav").hidden=v!=="year";
   $("tabDay").setAttribute("aria-selected",v==="day");
   $("tabMonth").setAttribute("aria-selected",v==="month");
   $("tabYear").setAttribute("aria-selected",v==="year");
-  $("eyebrow").textContent=v==="day"?"Gündəlik xərclər":v==="month"?"Aylıq büdcə":"İllik baxış";
+  $("tabCar").setAttribute("aria-selected",v==="car");
+  $("eyebrow").textContent=v==="day"?"Gündəlik xərclər":v==="month"?"Aylıq büdcə":v==="car"?"Avtomobil":"İllik baxış";
   updBackup();
   if(v==="month") renderMonth();
   if(v==="year"){autoScrolled=null; renderYear();}
+  if(v==="car") renderCar();
 }
 function goMonth(m){cur={y:yCur,m:Number(m)};render();setView("month");window.scrollTo(0,0)}
 
@@ -1684,6 +1886,7 @@ $("bsClose").onclick=closeBill;
 $("billSheet").addEventListener("click",ev=>{if(ev.target.id==="billSheet") closeBill()});
 $("graceSheet").addEventListener("click",ev=>{if(ev.target.id==="graceSheet") closeGrace()});
 $("tabYear").onclick=()=>{yCur=cur.y;setView("year")};
+$("tabCar").onclick=()=>setView("car");
 $("yprev").onclick=()=>{yCur--;renderYear()};
 $("ynext").onclick=()=>{yCur++;renderYear()};
 document.addEventListener("click",ev=>{
