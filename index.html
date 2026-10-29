@@ -159,6 +159,14 @@ details summary{cursor:pointer;font-weight:600}
 .wd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
 .hero4{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+/* the year's four totals, one under another, set like headings */
+.ysum{display:flex;flex-direction:column}
+.yrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.yrow:first-child{padding-top:0}
+.ylbl{font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--fg)}
+.yrow .num{font-size:1.35rem;font-weight:700;white-space:nowrap}
+.yval{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.yval .sub{font-size:.76rem}
 @media (min-width:640px){.hero4{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .dtable{width:100%;border-collapse:collapse;font-size:.88rem}
 .dtable th,.dtable td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
@@ -488,11 +496,11 @@ details summary{cursor:pointer;font-weight:600}
   <!-- İL -->
   <div class="view" id="yearView" hidden>
     <section class="panel" aria-label="İllik xülasə">
-      <div class="hero hero4">
-        <div><div class="label">Ümumi gəlir</div><div class="big num" id="yIncome">0</div></div>
-        <div><div class="label">Ümumi xərc</div><div class="big num" id="ySpent">0</div></div>
-        <div><div class="label">Qalıq</div><div class="big num" id="yLeft">0</div></div>
-        <div><div class="label">Borclar</div><div class="big num" id="yDebt">0</div><div class="sub" id="yDebtNow"></div></div>
+      <div class="ysum">
+        <div class="yrow"><span class="ylbl">Ümumi gəlir</span><b class="num" id="yIncome">0</b></div>
+        <div class="yrow"><span class="ylbl">Ümumi xərc</span><b class="num" id="ySpent">0</b></div>
+        <div class="yrow"><span class="ylbl">Qalıq</span><b class="num" id="yLeft">0</b></div>
+        <div class="yrow"><span class="ylbl">Borclar</span><span class="yval"><b class="num" id="yDebt">0</b><span class="sub" id="yDebtNow"></span></span></div>
       </div>
       <table class="dtable" id="yDebtList"></table>
     </section>
