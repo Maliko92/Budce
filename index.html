@@ -599,10 +599,6 @@ details summary{cursor:pointer;font-weight:600}
       <h2>Yağlar və mayelər</h2>
       <button class="odoline" type="button" id="odoBtn"><span>İndiki yürüş</span><span><b id="odoNow">—</b> ✎</span></button>
       <table class="dtable ftable" id="fluidList"></table>
-      <div class="oilbox" id="oilBox">
-        <div class="cartop"><h3>Motor yağı əlavələri</h3><button class="btn" type="button" id="topAdd">+ Yağ əlavə etdim</button></div>
-        <div id="oilStats"></div>
-      </div>
     </section>
     <section class="panel" aria-label="Təmir və dəyişmələr">
       <div class="cartop"><h2>Təmir qeydləri</h2><button class="btn primary" type="button" id="carAdd">+ Yeni qeyd</button></div>
@@ -707,6 +703,11 @@ details summary{cursor:pointer;font-weight:600}
   <form class="sheet-card" id="flForm">
     <h2 id="flTitle">Motor yağı</h2>
     <div class="flinfo" id="flInfo"></div>
+    <div class="oilbox" id="oilBox" hidden>
+      <div class="label">Yağ əlavələri</div>
+      <div id="oilStats"></div>
+      <button class="btn" type="button" id="topAdd">+ Yağ əlavə etdim</button>
+    </div>
     <button class="btn primary" type="button" id="flChange">Dəyişdi – yaz</button>
     <div class="field"><label class="label" for="flOil">Yağın adı, növü</label><input id="flOil" type="text" autocomplete="off" placeholder="Motul 5W-40"></div>
     <div class="gsrow">
@@ -1436,9 +1437,9 @@ function renderFluids(){
     const st=fluidState(fl), L=st.last, oil=oilOf(fl);
     const last=L?`${dFull(L.date)}${L.odo?`<small>${fmt0(L.odo)} mil</small>`:""}`:`<span class="dim">yazılmayıb</span>`;
     const when=!L?"—":st.nOdo?`${fmt0(st.nOdo)} mil${st.nDate?`<small>ən gec ${mYear(st.nDate)}</small>`:""}`:st.nDate?mYear(st.nDate):"—";
-    return `<tr data-fl="${fl.key}"><td><span class="dot ${st.cls}"></span>${esc(fl.name)}${oil?`<small>${esc(oil)}</small>`:""}</td><td>${last}</td><td class="${st.cls==="bad"?"bad":""}">${when}</td></tr>`;
+    const add=fl.key==="motor"?oilUse().short:"";
+    return `<tr data-fl="${fl.key}"><td><span class="dot ${st.cls}"></span>${esc(fl.name)}${oil?`<small>${esc(oil)}</small>`:""}${add?`<small>${add}</small>`:""}</td><td>${last}</td><td class="${st.cls==="bad"?"bad":""}">${when}</td></tr>`;
   }).join("")+`</tbody>`;
-  renderOil();
 }
 $("fluidList").addEventListener("click",ev=>{const r=ev.target.closest("tr[data-fl]"); if(r) openFluid(r.dataset.fl);});
 /* engine oil top-ups: a record with litres that is not a change (made with "+ Yağ əlavə etdim", or an old
@@ -1449,7 +1450,7 @@ function isTopup(r){
   const q=Number(r.qty)||0, t=norm([r.part,r.work,r.brand].join(" "));
   return q>0&&q<4&&/motor|5w|meguin|motul/.test(t)&&/yag|5w/.test(t)&&!/deyis/.test(t)&&!/karopka|rulavoy|antifr/.test(t);
 }
-function renderOil(){
+function oilUse(){
   const fl=fluids().find(x=>x.key==="motor"), L=fl?fluidLast(fl):null, odo=curOdo();
   const tops=car.filter(isTopup).sort((a,b)=>a.date.localeCompare(b.date)), lit=l=>rnd2(l.reduce((t,r)=>t+(Number(r.qty)||0),0));
   const lt=v=>String(Math.round(v*10)/10).replace(".",",")+" l";
@@ -1460,13 +1461,13 @@ function renderOil(){
   const yl=lit(year.filter(r=>!first||r.date>first.d)), rate=miles>=500?yl/miles*1000:null;
   const last=tops[tops.length-1];
   const row=(a,b)=>`<div class="oilrow"><span>${a}</span><b>${b}</b></div>`;
-  $("oilStats").innerHTML=
-    row(L?`Son dəyişmədən bəri (${dFull(L.date)})`:"Hamısı",`${lt(lit(since))}${since.length?` · ${since.length} dəfə`:""}`)+
+  return {sinceL:lit(since), short:lit(since)?`+${lt(lit(since))} əlavə`:"", html:
+    row("Son dəyişmədən bəri",`${lt(lit(since))}${since.length?` · ${since.length} dəfə`:""}`)+
     row("Son 12 ayda",`${lt(lit(year))}${year.length?` · ${year.length} dəfə`:""}`)+
     (rate!=null?row("Orta yeyir",`${lt(rate)} / 1000 mil`):"")+
-    (last?row("Son əlavə",`${dFull(last.date)} · ${lt(Number(last.qty)||0)}`):"");
+    (last?row("Son əlavə",`${dFull(last.date)} · ${lt(Number(last.qty)||0)}`):"")};
 }
-$("topAdd").onclick=()=>{$("topDate").value=TODAY; $("topOdo").value=curOdo()||""; $("topL").value="1"; $("topCost").value=""; $("topExp").checked=true; $("topSheet").hidden=false;};
+$("topAdd").onclick=()=>{$("flSheet").hidden=true; $("topDate").value=TODAY; $("topOdo").value=curOdo()||""; $("topL").value="1"; $("topCost").value=""; $("topExp").checked=true; $("topSheet").hidden=false;};
 $("topClose").onclick=()=>{$("topSheet").hidden=true};
 $("topSheet").addEventListener("click",ev=>{if(ev.target.id==="topSheet") $("topSheet").hidden=true});
 $("topForm").addEventListener("submit",async ev=>{
@@ -1489,10 +1490,10 @@ function openFluid(key){
   const fl=fluids().find(x=>x.key===key); if(!fl) return; flKey=key;
   const L=fluidLast(fl);
   $("flTitle").textContent=fl.name; $("flEvery").value=fl.every||""; $("flMonths").value=fl.months||""; $("flOil").value=oilOf(fl);
+  $("oilBox").hidden=key!=="motor"; if(key==="motor") $("oilStats").innerHTML=oilUse().html;
   const st=fluidState(fl);
   $("flInfo").innerHTML=L?`<span>Son dəyişmə: <b>${dFull(L.date)}</b>${L.odo?` · <b>${fmt0(L.odo)} mil</b>`:""}</span>`+
-    `<span>Növbəti: <b>${[st.nOdo?`${fmt0(st.nOdo)} mil`:"",st.nDate?dFull(st.nDate):""].filter(Boolean).join("</b> və ya <b>")||"—"}</b></span>`+
-    `<span>İndi: <b>${st.txt}</b></span>`:`<span>Son dəyişmə hələ yazılmayıb.</span>`;
+    `<span>Nə vaxt dəyişməli: <b>${[st.nOdo?`${fmt0(st.nOdo)} mil`:"",st.nDate?dFull(st.nDate):""].filter(Boolean).join("</b> və ya <b>")||"—"}</b></span>`:`<span>Son dəyişmə hələ yazılmayıb.</span>`;
   $("flDate").value=L?L.date:""; $("flOdo").value=L&&L.odo?L.odo:"";
   $("flSheet").hidden=false;
 }
