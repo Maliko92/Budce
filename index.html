@@ -180,6 +180,25 @@ details summary{cursor:pointer;font-weight:600}
 .ctable tbody tr.crow{cursor:pointer}
 .ctable tbody tr.crow:hover td{background:var(--accent-soft)}
 .sheet-card.tall{max-height:88vh;overflow:auto}
+/* oils and fluids: last change, next change, what is left */
+.odoline{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--accent-soft);font-size:.9rem;cursor:pointer;border:0;color:var(--fg);font:inherit;text-align:left;width:100%}
+.odoline b{font-family:var(--f-num);font-size:1.05rem}
+.fluids{display:flex;flex-direction:column}
+.fl{display:grid;grid-template-columns:12px minmax(0,1fr) auto;column-gap:10px;row-gap:3px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.fl:last-child{border-bottom:0}
+.fl .dot{width:10px;height:10px;border-radius:50%;background:var(--ok);grid-row:1/3;align-self:start;margin-top:6px}
+.fl .dot.warn{background:var(--warn)} .fl .dot.bad{background:var(--bad)} .fl .dot.none{background:var(--line)}
+.fl .fn{font-weight:700;cursor:pointer;background:none;border:0;padding:0;color:var(--fg);font:inherit;font-weight:700;text-align:left}
+.fl .fn::after{content:" ✎";color:var(--muted);font-weight:400;font-size:.85em}
+.fl .fs{font-size:.8rem;color:var(--muted);grid-column:2;line-height:1.4}
+.fl .fr{text-align:right;font-family:var(--f-num);font-weight:700;white-space:nowrap;font-size:.9rem}
+.fl .fr.ok{color:var(--ok)} .fl .fr.warn{color:var(--warn)} .fl .fr.bad{color:var(--bad)} .fl .fr.none{color:var(--muted);font-weight:400}
+.fl .btn{grid-column:3;grid-row:2;padding:5px 12px;font-size:.82rem;justify-self:end}
+.carlog>summary{cursor:pointer;color:var(--accent);font-weight:600;padding:4px 0;list-style:none}
+.carlog>summary::-webkit-details-marker{display:none}
+.carlog>summary::before{content:"› ";display:inline-block}
+.carlog[open]>summary::before{content:"⌄ "}
+.carlog[open]>summary{margin-bottom:10px}
 /* the year's four totals, one under another, set like headings */
 .ysum{display:flex;flex-direction:column}
 .yrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
@@ -557,13 +576,19 @@ details summary{cursor:pointer;font-weight:600}
       <div class="ysum">
         <div class="yrow"><span class="ylbl" id="carYearLbl">Bu il</span><b class="num" id="carYear">0 ₼</b></div>
         <div class="yrow"><span class="ylbl" id="carAllLbl">Cəmi</span><b class="num" id="carAll">0 ₼</b></div>
-        <div class="yrow"><span class="ylbl">Son yürüş</span><span class="yval"><b class="num" id="carOdo">—</b><span class="sub" id="carOdoSub"></span></span></div>
       </div>
     </section>
+    <section class="panel" aria-label="Yağlar və mayelər">
+      <h2>Yağlar və mayelər</h2>
+      <button class="odoline" type="button" id="odoBtn"><span>İndiki yürüş</span><span><b id="odoNow">—</b> ✎</span></button>
+      <div class="fluids" id="fluidList"></div>
+    </section>
     <section class="panel" aria-label="Təmir və dəyişmələr">
-      <div class="cartop"><h2>Təmir və dəyişmələr</h2><button class="btn primary" type="button" id="carAdd">+ Yeni qeyd</button></div>
-      <label class="carfilter">Hissə <select id="carFilter"><option value="">Hamısı</option></select></label>
-      <div class="tscroll"><table class="ctable" id="carTable"></table></div>
+      <div class="cartop"><h2>Təmir qeydləri</h2><button class="btn primary" type="button" id="carAdd">+ Yeni qeyd</button></div>
+      <details class="carlog" id="carLog"><summary id="carLogSum">Bütün qeydlər</summary>
+        <label class="carfilter">Hissə <select id="carFilter"><option value="">Hamısı</option></select></label>
+        <div class="tscroll"><table class="ctable" id="carTable"></table></div>
+      </details>
     </section>
     <section class="panel" aria-label="Excel-dən köçür">
       <div class="cartop"><span class="sub">Köhnə Excel cədvəlinizi ("Golf mk 4" vərəqi) bura köçürə bilərsiniz.</span><button class="btn" type="button" id="carImport">Excel-dən köçür</button></div>
@@ -655,6 +680,28 @@ details summary{cursor:pointer;font-weight:600}
     <label class="chk" id="csExpWrap"><input type="checkbox" id="csExp" checked> Gündəlik xərclərə də yaz (Avto)</label>
     <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn danger" type="button" id="csDelete">Sil</button><button class="btn" type="button" id="csClose">Bağla</button></div>
     <datalist id="csParts"></datalist><datalist id="csPlaces"></datalist>
+  </form>
+</div>
+<div class="sheet" id="flSheet" hidden>
+  <form class="sheet-card" id="flForm">
+    <h2 id="flTitle">Motor yağı</h2>
+    <div class="gsrow">
+      <div class="field"><label class="label" for="flEvery">Hər neçə mil</label><input id="flEvery" type="number" inputmode="numeric" step="100" min="0" placeholder="—"></div>
+      <div class="field"><label class="label" for="flMonths">Hər neçə ay</label><input id="flMonths" type="number" inputmode="numeric" step="1" min="0" placeholder="—"></div>
+    </div>
+    <div class="sub">Hansı tez çatarsa, o sayılır. Boş qoyduğunuz sayılmır.</div>
+    <div class="gsrow">
+      <div class="field"><label class="label" for="flDate">Son dəyişmə</label><input id="flDate" type="date"></div>
+      <div class="field"><label class="label" for="flOdo">Həmin yürüş, mil</label><input id="flOdo" type="number" inputmode="numeric" step="1" min="0" placeholder="—"></div>
+    </div>
+    <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn" type="button" id="flClose">Bağla</button></div>
+  </form>
+</div>
+<div class="sheet" id="odoSheet" hidden>
+  <form class="sheet-card" id="odoForm">
+    <h2>İndiki yürüş</h2>
+    <div class="field"><label class="label" for="odoInput">Spidometrdə nə yazılıb, mil</label><input id="odoInput" type="number" inputmode="numeric" step="1" min="0" required></div>
+    <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn" type="button" id="odoClose">Bağla</button></div>
   </form>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -1256,7 +1303,7 @@ function renderYear(){
 /* ---------- car log: what was changed on the car, when, at what mileage, what the part and the work cost ----------
    Stored apart from the budget (this phone, or budget/car on the Claude page). A new record can also be written
    as an "Avto" expense of that day; the two stay linked (editing or deleting the record changes the expense too). */
-let car=[], carFilter="", csId=null;
+let car=[], carFilter="", csId=null, csFluid=null;
 const MI=1.609344;
 const carTotal=r=>rnd2(Number(r.partCost||0)+Number(r.labor||0));
 async function saveCar(){ if(store==="db"){await db.doc("budget/car").set({items:car})} else lsSet("car",car); }
@@ -1267,8 +1314,8 @@ function renderCar(){
   const sum=l=>rnd2(l.reduce((t,r)=>t+carTotal(r),0)), y=String(now.getFullYear());
   $("carYearLbl").textContent=`Bu il (${y})`; $("carYear").textContent=fmt0(sum(rows.filter(r=>r.date.startsWith(y))))+" ₼";
   $("carAllLbl").textContent=rows.length?`Cəmi (${rows[rows.length-1].date.slice(0,4)}-dən)`:"Cəmi"; $("carAll").textContent=fmt0(sum(rows))+" ₼";
-  const last=rows.find(r=>Number(r.odo)>0);
-  $("carOdo").textContent=last?`${fmt0(last.odo)} mil`:"—"; $("carOdoSub").textContent=last?`${fmt0(last.odo*MI)} km · ${dFull(last.date)}`:"";
+  $("carLogSum").textContent=`Bütün qeydlər (${rows.length})`;
+  renderFluids();
   const parts=[...new Set(rows.map(r=>(r.part||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"az"));
   if(carFilter&&!parts.includes(carFilter)) carFilter="";
   $("carFilter").innerHTML=`<option value="">Hamısı</option>`+parts.map(p=>`<option value="${esc(p)}"${p===carFilter?" selected":""}>${esc(p)}</option>`).join("");
@@ -1289,20 +1336,111 @@ function renderCar(){
   updateHints();
 }
 $("carFilter").onchange=ev=>{carFilter=ev.target.value; renderCar();};
+/* oils and fluids: the last change comes from the log (a record made with "Dəyişdi", or one whose words say it,
+   e.g. "Motor yag … deyisdi", "Karopka yagi", "Rulavoy … atf yag", "Antifriz"), or from a date written by hand.
+   Next change = last + interval in miles or months, whichever comes first; a "Növbəti" mileage in the record wins. */
+const FLUID_DEFAULTS=[
+  {key:"motor",name:"Motor yağı",every:4000,months:12},
+  {key:"karopka",name:"Karopka yağı",every:25000,months:36},
+  {key:"rulavoy",name:"Rulavoy yağı",every:30000,months:24},
+  {key:"antifriz",name:"Antifriz",every:30000,months:24},
+  {key:"eylec",name:"Əyləc mayesi",every:null,months:24}];
+const FLUID_RX={
+  motor:t=>/motor/.test(t)&&/yag/.test(t)&&/deyis/.test(t),
+  karopka:t=>/karopka|korobka/.test(t)&&/yag|atf|maye/.test(t),
+  rulavoy:t=>/rulavoy/.test(t)&&/yag|atf|maye/.test(t),
+  antifriz:t=>/antifr|antifris|tosol/.test(t)&&!/qab|bacok|qapag/.test(t),
+  eylec:t=>/eylec|tormoz/.test(t)&&/maye|yag/.test(t)};
+const fluids=()=>plan.fluids||structuredClone(FLUID_DEFAULTS);
+function curOdo(){
+  // the highest believable reading in the log (a mistyped extra digit is ignored), or the one written by hand
+  const fromLog=car.reduce((m,r)=>{const o=Number(r.odo)||0; return o<1e6?Math.max(m,o):m;},0), own=Number(plan.carOdo&&plan.carOdo.odo)||0;
+  return Math.max(fromLog,own)||0;
+}
+function fluidLast(fl){
+  let best=null;
+  const take=(date,odo,next)=>{if(!date) return; if(!best||date>best.date) best={date,odo:Number(odo)||null,next:next||""};
+    else if(date===best.date&&!best.odo&&odo) best.odo=Number(odo);};
+  if(fl.last&&fl.last.date) take(fl.last.date,fl.last.odo,"");
+  car.forEach(r=>{const t=norm([r.part,r.work,r.brand].join(" ")); if(r.fluid===fl.key||(!r.fluid&&FLUID_RX[fl.key]&&FLUID_RX[fl.key](t))) take(r.date,r.odo,r.next);});
+  return best;
+}
+const addMonths=(ds,n)=>{const [y,m,d]=ds.split("-").map(Number); const dt=new Date(y,m-1+n,d); return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;};
+function fluidState(fl){
+  const last=fluidLast(fl); if(!last) return {last:null,cls:"none",txt:"qeyd yoxdur"};
+  const odo=curOdo(); let nOdo=null, nDate=null;
+  const nx=parseFloat(String(last.next||"").replace(/[^\d.]/g,""));
+  if(last.odo&&nx>last.odo&&nx<last.odo+60000) nOdo=nx; else if(last.odo&&fl.every) nOdo=last.odo+Number(fl.every);
+  if(fl.months) nDate=addMonths(last.date,Number(fl.months));
+  const remMi=nOdo&&odo?nOdo-odo:null, remD=nDate?Math.round((Date.parse(nDate)-Date.parse(TODAY))/864e5):null;
+  const per=Number(fl.every)||0, late=(remMi!=null&&remMi<0)||(remD!=null&&remD<0);
+  const soon=!late&&((remMi!=null&&remMi<=Math.max(300,per*0.1))||(remD!=null&&remD<=30));
+  const dTxt=d=>d>=60?`${Math.floor(d/30.4)} ay`:`${d} gün`;
+  let txt;
+  if(late) txt=remMi!=null&&remMi<0?`${fmt0(-remMi)} mil keçib`:"vaxtı keçib";
+  else if(remMi!=null) txt=`${fmt0(remMi)} mil qalıb`;
+  else if(remD!=null) txt=`${dTxt(remD)} qalıb`;
+  else txt="—";
+  return {last,nOdo,nDate,cls:late?"bad":soon?"warn":"ok",txt};
+}
+function renderFluids(){
+  const odo=curOdo();
+  $("odoNow").textContent=odo?`${fmt0(odo)} mil`:"yazın";
+  $("fluidList").innerHTML=fluids().map(fl=>{
+    const st=fluidState(fl), L=st.last;
+    const lastTxt=L?`Son: ${dFull(L.date)}${L.odo?` · ${fmt0(L.odo)} mil`:""}`:"Son dəyişmə yazılmayıb";
+    const nextTxt=L&&(st.nOdo||st.nDate)?`<br>Növbəti: ${[st.nOdo?`${fmt0(st.nOdo)} mil`:"",st.nDate?dFull(st.nDate):""].filter(Boolean).join(" və ya ")}`:"";
+    return `<div class="fl"><span class="dot ${st.cls}"></span><button type="button" class="fn" data-fledit="${fl.key}">${esc(fl.name)}</button><span class="fr ${st.cls}">${st.txt}</span>
+      <span class="fs">${lastTxt}${nextTxt}</span><button type="button" class="btn" data-flchg="${fl.key}">Dəyişdi</button></div>`;
+  }).join("");
+}
+$("fluidList").addEventListener("click",ev=>{
+  const c=ev.target.closest("[data-flchg]"); if(c){openCar(null,c.dataset.flchg); return;}
+  const e=ev.target.closest("[data-fledit]"); if(e) openFluid(e.dataset.fledit);
+});
+let flKey=null;
+function openFluid(key){
+  const fl=fluids().find(x=>x.key===key); if(!fl) return; flKey=key;
+  const L=fluidLast(fl);
+  $("flTitle").textContent=fl.name; $("flEvery").value=fl.every||""; $("flMonths").value=fl.months||"";
+  $("flDate").value=L?L.date:""; $("flOdo").value=L&&L.odo?L.odo:"";
+  $("flSheet").hidden=false;
+}
+$("flClose").onclick=()=>{$("flSheet").hidden=true};
+$("flSheet").addEventListener("click",ev=>{if(ev.target.id==="flSheet") $("flSheet").hidden=true});
+$("flForm").addEventListener("submit",async ev=>{
+  ev.preventDefault();
+  const list=fluids(), fl=list.find(x=>x.key===flKey); if(!fl) return;
+  const n=id=>{const v=parseFloat($(id).value); return v>0?v:null;};
+  fl.every=n("flEvery"); fl.months=n("flMonths");
+  const d=$("flDate").value, o=n("flOdo"), L=fluidLast({...fl,last:null});
+  if(d&&(!L||d!==L.date||(o||null)!==(L.odo||null))) fl.last={date:d,odo:o}; else if(!d) delete fl.last;
+  plan.fluids=list; $("flSheet").hidden=true; renderCar();
+  try{await savePlan(); toast("Yadda saxlanıldı")}catch(x){toast("Yadda saxlanmadı")}
+});
+$("odoBtn").onclick=()=>{$("odoInput").value=curOdo()||""; $("odoSheet").hidden=false; $("odoInput").focus();};
+$("odoClose").onclick=()=>{$("odoSheet").hidden=true};
+$("odoSheet").addEventListener("click",ev=>{if(ev.target.id==="odoSheet") $("odoSheet").hidden=true});
+$("odoForm").addEventListener("submit",async ev=>{
+  ev.preventDefault(); const v=parseFloat($("odoInput").value); if(!(v>0)) return;
+  plan.carOdo={odo:Math.round(v),date:TODAY}; $("odoSheet").hidden=true; renderCar();
+  try{await savePlan(); toast("Yadda saxlanıldı")}catch(x){toast("Yadda saxlanmadı")}
+});
 $("carTable").addEventListener("click",ev=>{const r=ev.target.closest("tr[data-car]"); if(r) openCar(r.dataset.car);});
 $("carAdd").onclick=()=>openCar(null);
-function openCar(id){
-  const r=id?car.find(x=>x.id===id):null; csId=r?r.id:null;
+function openCar(id,fluid){
+  const r=id?car.find(x=>x.id===id):null; csId=r?r.id:null; csFluid=r?null:(fluid||null);
   $("csTitle").textContent=r?"Qeydi düzəlt":"Yeni qeyd";
   $("csDate").value=r?r.date:TODAY; $("csOdo").value=r&&r.odo?r.odo:"";
   $("csPart").value=r?r.part||"":""; $("csWork").value=r?r.work||"":""; $("csBrand").value=r?r.brand||"":""; $("csPlace").value=r?r.place||"":"";
   $("csCost").value=r&&r.partCost?r.partCost:""; $("csLabor").value=r&&r.labor?r.labor:""; $("csNext").value=r?r.next||"":"";
   const last=car.filter(x=>Number(x.odo)>0).sort((a,b)=>b.date.localeCompare(a.date))[0]; $("csOdo").placeholder=last?String(last.odo):"—";
   $("csExpWrap").hidden=!!r; $("csExp").checked=true;
+  if(!r&&fluid){const fl=fluids().find(x=>x.key===fluid); $("csPart").value=fl?fl.name:""; $("csWork").value="Dəyişdi"; $("csOdo").value=curOdo()||""; $("csTitle").textContent=(fl?fl.name:"")+" dəyişdi";}
   $("csDelete").hidden=!r; $("csDelete").textContent="Sil"; delete $("csDelete").dataset.armed;
   $("carSheet").hidden=false;
 }
-function closeCar(){$("carSheet").hidden=true; csId=null;}
+function closeCar(){$("carSheet").hidden=true; csId=null; csFluid=null;}
 $("csClose").onclick=closeCar;
 $("carSheet").addEventListener("click",ev=>{if(ev.target.id==="carSheet") closeCar()});
 $("csForm").addEventListener("submit",async ev=>{
@@ -1319,11 +1457,12 @@ $("csForm").addEventListener("submit",async ev=>{
       Object.assign(old,rec);
       if(old.expId&&expenses.some(e=>e.id===old.expId)&&total>0) await updExpense(old.expId,{date:rec.date,month:rec.date.slice(0,7),amount:total,note:carNote(old)});
     }else{
-      const r={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),...rec};
+      const r={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),...rec}; if(csFluid) r.fluid=csFluid;
       if(withExp&&total>0){const e={date:rec.date,month:rec.date.slice(0,7),cat:plan.cats.some(c=>c.key==="avto")?"avto":"diger",amount:total,note:carNote(r),created:Date.now()};
         await addExpense(e); r.expId=e.id;}
       car.push(r);
     }
+    if(rec.odo&&rec.odo>curOdo()){plan.carOdo={odo:rec.odo,date:rec.date}; savePlan().catch(()=>{});}
     renderCar(); await saveCar(); toast(old?"Düzəldildi":"Əlavə edildi");
   }catch(x){toast("Yadda saxlanmadı")}
 });
