@@ -239,6 +239,17 @@ details summary{cursor:pointer;font-weight:600}
 .catitems .cd{color:var(--muted);font-size:.8rem;min-width:46px;font-family:var(--f-num)}
 .catitems .num{white-space:nowrap}
 .catitems li.mhead{font-weight:700;color:var(--accent);border-top:2px solid var(--line);padding-top:9px}
+/* same-name expenses in one line; a line with several opens into its dates */
+.catitems li.nmgrp{display:block;padding:0}
+.catgrp .nmgrp summary,.catgrp[open] .nmgrp summary{list-style:none;display:flex;align-items:baseline;gap:10px;padding:7px 0;cursor:pointer;background:none}
+.nmgrp summary::-webkit-details-marker{display:none}
+.nmgrp summary .grow::after{content:" ›";color:var(--muted)}
+.nmgrp details[open] summary .grow::after{content:" ⌄"}
+.catgrp .nmgrp summary .grow{font-weight:400}
+.nmgrp summary .num{font-weight:400}
+.nmgrp ul{padding:0 0 4px 14px}
+.nmgrp ul li{display:flex;align-items:baseline;gap:10px;padding:5px 0;border-top:1px dashed var(--line);font-size:.84rem;color:var(--muted)}
+.catitems .cnt{color:var(--muted);font-size:.8rem;font-family:var(--f-num);white-space:nowrap}
 .catitems li.mhead:first-child{border-top:0}
 .catitems li.mhead.zero{color:var(--muted);font-weight:500}
 .wkgrp .catitems li:not(.mhead){padding-left:10px}
@@ -1024,7 +1035,7 @@ document.addEventListener("click",ev=>{
 });
 
 /* ---------- category report: totals per category, and every expense listed under its category ---------- */
-const openCats=new Set();
+const openCats=new Set(), openNames=new Set();
 function renderCatReport(mode,exps,label){
   const total=rnd2(sumAmt(exps));
   const known=new Set(plan.cats.map(c=>c.key));
@@ -1034,16 +1045,24 @@ function renderCatReport(mode,exps,label){
   $(mode+"catSum").innerHTML=`<span>${label}: ${exps.length} xərc</span><b>${fmt(total)} ₼</b>`;
   if(!groups.length){$(mode+"catRep").innerHTML=`<div class="empty">Bu dövrdə xərc yazılmayıb.</div>`; return;}
   const dmy=e=>{const [,m,d]=e.date.split("-").map(Number);return `${d} ${SHORT[m-1]}`};
-  const item=e=>`<li class="editable" data-edit="${e.id}"><span class="cd">${dmy(e)}</span><span class="grow">${esc(e.note||"—")}</span><span class="num">${fmt(e.amount)} ₼</span></li>`;
   $(mode+"catRep").innerHTML=groups.map(g=>{
     const id=mode+":"+g.key, pct=total>0?g.sum/total*100:0;
-    const items=g.items.slice().sort((a,b)=>a.date.localeCompare(b.date)||(a.created||0)-(b.created||0));
-    let list;
-    if(mode==="y"){ // whole year: grouped by month with a subtotal
-      const byM={}; items.forEach(e=>(byM[e.month]=byM[e.month]||[]).push(e));
-      list=Object.keys(byM).sort().map(mk=>{const [,m]=mk.split("-").map(Number);
-        return `<li class="mhead"><span class="grow">${MONTHS[m-1]}</span><span class="num">${fmt(sumAmt(byM[mk]))} ₼</span></li>`+byM[mk].map(item).join("")}).join("");
-    } else list=items.map(item).join("");
+    // one line per name (same note, any case or ə/i spelling), biggest first; shown in its most used spelling
+    const byName={};
+    g.items.slice().sort((a,b)=>a.date.localeCompare(b.date)||(a.created||0)-(b.created||0)).forEach(e=>{
+      const k=norm(e.note||"")||"—", r=byName[k]||(byName[k]={k,items:[],sum:0,sp:{}});
+      const t=(e.note||"").trim()||"Qeydsiz"; r.sp[t]=(r.sp[t]||0)+1;
+      r.items.push(e); r.sum+=Number(e.amount||0);
+    });
+    Object.values(byName).forEach(r=>{r.name=Object.entries(r.sp).sort((a,b)=>b[1]-a[1])[0][0];});
+    const rows=Object.values(byName).map(r=>({...r,sum:rnd2(r.sum)})).sort((a,b)=>b.sum-a.sum||a.name.localeCompare(b.name,"az"));
+    const list=rows.map(r=>{
+      if(r.items.length===1){const e=r.items[0];
+        return `<li class="editable" data-edit="${e.id}"><span class="grow">${esc(r.name)}</span><span class="cnt">${dmy(e)}</span><span class="num">${fmt(e.amount)} ₼</span></li>`;}
+      const nid=id+":"+r.k, its=r.items.slice().reverse();
+      return `<li class="nmgrp"><details data-nm="${esc(nid)}" ${openNames.has(nid)?"open":""}><summary><span class="grow">${esc(r.name)}</span><span class="cnt">×${r.items.length}</span><span class="num">${fmt(r.sum)} ₼</span></summary>
+        <ul>${its.map(e=>`<li class="editable" data-edit="${e.id}"><span class="grow">${dmy(e)}</span><span class="num">${fmt(e.amount)} ₼</span></li>`).join("")}</ul></details></li>`;
+    }).join("");
     return `<details class="catgrp" data-cat="${id}" ${openCats.has(id)?"open":""}>
       <summary><span class="chev" aria-hidden="true">›</span>
         <span class="grow"><span class="cn">${esc(g.name)}</span> <span class="sub">${g.items.length} xərc · ${Math.round(pct)}%</span>
@@ -1053,6 +1072,7 @@ function renderCatReport(mode,exps,label){
   }).join("");
 }
 document.addEventListener("toggle",ev=>{
+  const n=ev.target; if(n.dataset&&n.dataset.nm){n.open?openNames.add(n.dataset.nm):openNames.delete(n.dataset.nm); return;}
   const d=ev.target; if(!d.classList||!d.classList.contains("catgrp")) return;
   d.open?openCats.add(d.dataset.cat):openCats.delete(d.dataset.cat);
 },true);
