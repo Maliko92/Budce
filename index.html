@@ -198,8 +198,10 @@ details summary{cursor:pointer;font-weight:600}
 .yt thead th{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .yt thead th.curm{background:var(--accent);color:var(--bg)}
 .yt thead th[data-go]{cursor:pointer}
-.yt th[data-m],.yt th.pc[data-m]{min-width:62px;padding:6px 9px;text-align:right}
-.yt td{min-width:62px}
+.ytable.yt thead th{text-transform:none;letter-spacing:0;font-size:.82rem}
+.ytable.yt th[data-m],.ytable.yt th.tot{min-width:86px;padding:7px 8px;text-align:center}
+.ytable.yt td{min-width:86px;text-align:center}
+.ytable.yt td:first-child{text-align:left}
 .yt th+th,.yt td+td{border-left:1px solid var(--line)}
 .yt td.tot,.yt th.tot{border-left:2px solid var(--line)}
 .yt td.curm{background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
@@ -1233,7 +1235,7 @@ function yearTable(Y){
 function renderYearTable(){
   const T=yearTable(yCur);
   const num=(v,est,color,dash)=>v==null?"":(dash&&!v)?'<span class="est">–</span>':`<span class="${est?"est":""}"${color?` style="color:${v<0?"var(--bad)":"var(--ok)"}"`:""}>${est?"≈":""}${fmt0(v)}</span>`;
-  const head=`<thead><tr><th>${yCur}</th>${SHORT.map((s,i)=>`<th data-m="${i}" data-go="${i}" class="${T.M[i].isCur?"curm":""}">${s}</th>`).join("")}<th class="tot">Cəmi</th></tr></thead>`;
+  const head=`<thead><tr><th>${yCur}</th>${MONTHS.map((s,i)=>`<th data-m="${i}" data-go="${i}" class="${T.M[i].isCur?"curm":""}">${s}</th>`).join("")}<th class="tot">Cəmi</th></tr></thead>`;
   const tr=(r,cls,dash)=>{
     const cells=r.vals.map((v,m)=>`<td class="${T.M[m].isCur?"curm":""}">${num(v,r.est&&r.est[m],r.color,dash)}</td>`).join("");
     return `<tr class="${cls}"${r.key?` data-yrow="${r.key}"`:""}><td><b>${esc(r.label)}</b>${r.sub?`<small>${esc(r.sub)}</small>`:""}</td>${cells}<td class="tot">${num(r.total,false,r.color,dash)}</td></tr>`;
