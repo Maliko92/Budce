@@ -160,17 +160,18 @@ details summary{cursor:pointer;font-weight:600}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
 .hero4{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
 @media (min-width:640px){.hero4{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.debtlist li{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;column-gap:12px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line);font-size:.88rem}
-.debtlist li:first-child{border-top:0}
-.debtlist .num{text-align:right;min-width:52px;font-weight:400}
-.debtlist .int{color:var(--warn)}
-.debtlist .all{font-weight:700}
-.debtlist li.dtot{border-top:2px solid var(--line);font-weight:700}
-.debtlist li.dtot .num{font-weight:700}
-.debtlist li.dhead{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:0 0 2px}
-.debtlist li.dhead span{text-align:right}
-.debtlist li.dhead span:first-child{text-align:left}
-.debtlist .dim{color:var(--muted);font-weight:400}
+.dtable{width:100%;border-collapse:collapse;font-size:.88rem}
+.dtable th,.dtable td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.dtable th+th,.dtable td+td{border-left:1px solid var(--line)}
+.dtable th:first-child,.dtable td:first-child{text-align:left;padding-left:0;white-space:normal}
+.dtable td:last-child,.dtable th:last-child{padding-right:0}
+.dtable thead th{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding-top:2px;line-height:1.25;white-space:normal;vertical-align:bottom}
+.dtable td{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.dtable td:first-child{font-family:var(--f-body)}
+.dtable .int{color:var(--warn)}
+.dtable .all{font-weight:700}
+.dtable tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0}
+.dtable .dim{color:var(--muted)}
 .incform{display:flex;flex-direction:column;gap:8px}
 .inchead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .inchead .sub.ok{color:var(--ok)} .inchead .sub.warn{color:var(--warn)}
@@ -493,7 +494,7 @@ details summary{cursor:pointer;font-weight:600}
         <div><div class="label">Qalıq</div><div class="big num" id="yLeft">0</div></div>
         <div><div class="label">Borclar</div><div class="big num" id="yDebt">0</div><div class="sub" id="yDebtNow"></div></div>
       </div>
-      <ul class="debtlist" id="yDebtList"></ul>
+      <table class="dtable" id="yDebtList"></table>
     </section>
 
     <section class="panel" aria-label="İllik cədvəl">
@@ -1152,10 +1153,10 @@ function renderYear(){
   // each debt: the principal left today, the interest still to come, and what will be paid in all
   const n0=v=>fmt0(v), known=debts.filter(d=>d.left!==null);
   const tl=rnd2(known.reduce((t,d)=>t+d.left,0)), tn=rnd2(known.reduce((t,d)=>t+d.now,0));
-  $("yDebtList").innerHTML=debts.length?`<li class="dhead"><span>₼</span><span>Əsas borc</span><span>Faiz</span><span>Cəmi</span></li>`+
-    debts.map(d=>`<li><span>${esc(d.name)}</span>`+(d.left===null?'<span class="num dim">—</span><span class="num dim">—</span><span class="num dim">—</span>'
-      :`<span class="num">${n0(d.now)}</span><span class="num int">${n0(rnd2(d.left-d.now))}</span><span class="num all">${n0(d.left)}</span>`)+`</li>`).join("")+
-    (known.length>1?`<li class="dtot"><span>Cəmi</span><span class="num">${n0(tn)}</span><span class="num int">${n0(rnd2(tl-tn))}</span><span class="num all">${n0(tl)}</span></li>`:""):"";
+  $("yDebtList").innerHTML=debts.length?`<thead><tr><th>Borc, ₼</th><th>Əsas borc</th><th>Faiz</th><th>Cəmi</th></tr></thead><tbody>`+
+    debts.map(d=>`<tr><td>${esc(d.name)}</td>`+(d.left===null?'<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>'
+      :`<td>${n0(d.now)}</td><td class="int">${n0(rnd2(d.left-d.now))}</td><td class="all">${n0(d.left)}</td>`)+`</tr>`).join("")+`</tbody>`+
+    (known.length>1?`<tfoot><tr><td>Cəmi</td><td>${n0(tn)}</td><td class="int">${n0(rnd2(tl-tn))}</td><td class="all">${n0(tl)}</td></tr></tfoot>`:""):"";
 
   // chart
   const max=Math.max(...rows.map(r=>r.spent),1)*1.1;
