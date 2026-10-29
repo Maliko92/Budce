@@ -484,7 +484,7 @@ details summary{cursor:pointer;font-weight:600}
         <div><div class="label">Ümumi gəlir</div><div class="big num" id="yIncome">0</div></div>
         <div><div class="label">Ümumi xərc</div><div class="big num" id="ySpent">0</div></div>
         <div><div class="label">Qalıq</div><div class="big num" id="yLeft">0</div></div>
-        <div><div class="label">Borclar</div><div class="big num" id="yDebt">0</div></div>
+        <div><div class="label">Borclar</div><div class="big num" id="yDebt">0</div><div class="sub" id="yDebtNow"></div></div>
       </div>
       <ul class="debtlist" id="yDebtList"></ul>
     </section>
@@ -580,9 +580,9 @@ details summary{cursor:pointer;font-weight:600}
 const DEFAULT_PLAN = {
   income: 3500,
   fixed: [
-    {key:"ipoteka", name:"İpoteka ev", amount:515.63, day:null},
-    {key:"k35", name:"Kredit 35 000 (11,5%)", amount:779.34, day:13},
-    {key:"k15", name:"İstehlak krediti 15 000 (12,5%)", amount:398.70, day:21},
+    {key:"ipoteka", name:"İpoteka ev", amount:515.63, day:null, rate:4},
+    {key:"k35", name:"Kredit 35 000 (11,5%)", amount:779.34, day:13, rate:11.5},
+    {key:"k15", name:"İstehlak krediti 15 000 (12,5%)", amount:398.70, day:21, rate:12.5},
     {key:"taksit", name:"Birkart taksit", amount:227.15, day:null},
     {key:"qaz", name:"Qaz", amount:0, day:null, variable:true, group:"kommunal"},
     {key:"su", name:"Su", amount:16, day:null, variable:true, group:"kommunal"},
@@ -710,6 +710,13 @@ function migrateV11(){
   if(plan.reserve==null) plan.reserve=200;
   plan.v11=true; lsSet("plan",plan);
 }
+// one-time: each loan's yearly rate, so "indi bağlamaq" can leave out the future interest
+function migrateV12(){
+  if(plan.v12) return;
+  const R={k35:11.5,k15:12.5,taksit:0,ipoteka:4};
+  plan.fixed.forEach(f=>{if(f.rate==null&&R[f.key]!=null) f.rate=R[f.key];});
+  plan.v12=true; lsSet("plan",plan);
+}
 function migrateV8(){
   if(plan.v8) return;
   const fi=plan.cats.findIndex(c=>c.key==="fond");
@@ -758,7 +765,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{});
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -783,6 +790,12 @@ const prevKey=mk=>{const [y,m]=mk.split("-").map(Number);return m===1?`${y-1}-12
 function marksSince(f,from,upto){return Object.keys(paid).filter(k=>k>=from&&(!upto||k<=upto)&&paid[k]&&paid[k][f.key]).length}
 // how much one ✓ takes off the debt: usually the whole payment; the mortgage's insurance part (debt.pay) is not debt
 const debtPay=f=>Number((f.debt&&f.debt.pay)||f.amount||0);
+// what closing a debt today would take: its remaining payments without the future interest (the loan's own yearly rate)
+function payoffOf(f){
+  const left=debtLeft(f); if(!left) return 0;
+  const r=Number(f.rate||0)/1200, pay=debtPay(f); if(!(r>0)||!(pay>0)) return left;
+  return rnd2(pay*(1-Math.pow(1+r,-left/pay))/r);
+}
 function debtLeft(f,upto){ if(!f.debt) return null;
   return Math.max(0,rnd2(Number(f.debt.left||0)-marksSince(f,f.debt.from,upto)*debtPay(f))); }
 function debtLeftBefore(f,mk){ if(!f.debt) return null; return mk<=f.debt.from?Number(f.debt.left||0):debtLeft(f,prevKey(mk)); }
@@ -1127,6 +1140,8 @@ function renderYear(){
   if(plan.card&&!plan.fixed.some(f=>f.key===plan.card.taksit)){const g=cardOpenGrace(); if(g>0) debts.push({name:plan.card.name||"Kart",left:g});}
   const debtSum=rnd2(debts.reduce((t,d)=>t+(d.left||0),0));
   $("yDebt").textContent=fmt0(debtSum)+" ₼"; $("yDebt").style.color="var(--warn)";
+  const nowSum=rnd2(plan.fixed.filter(f=>f.debt).reduce((t,f)=>t+payoffOf(f),0)+(plan.card?cardOpenGrace():0));
+  $("yDebtNow").textContent=nowSum>0&&nowSum<debtSum-0.5?`indi bağlamaq: ${fmt0(nowSum)} ₼`:"";
   $("yDebtList").innerHTML=debts.map(d=>`<li><span>${esc(d.name)}</span>${d.left===null?'<span class="dim">—</span>':`<span class="num">${fmt(d.left)} ₼</span>`}</li>`).join("");
 
   // chart
@@ -1344,7 +1359,7 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11();
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat==="fond"&&!plan.cats.some(c=>c.key==="fond")?"diger":e.cat}));
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
@@ -1463,7 +1478,8 @@ function fillSettings(){
     <label for="sf_${k}">Aylıq ödəniş, ₼</label><input id="sf_${k}" type="number" step="0.01" value="${f.amount}">
     <label for="sb_${k}">Bank</label><input id="sb_${k}" type="text" placeholder="—" value="${esc(f.bank||"")}">
     <label for="st_${k}">Götürülən kredit, ₼</label><input id="st_${k}" type="number" step="1" placeholder="—" value="${f.taken||""}">
-    <label for="sd_${k}">Qalan borc, ₼</label><input id="sd_${k}" type="number" step="0.01" placeholder="—" value="${dl===null?"":dl}" data-orig="${dl===null?"":dl}">`;});
+    <label for="sd_${k}">Qalan borc, ₼</label><input id="sd_${k}" type="number" step="0.01" placeholder="—" value="${dl===null?"":dl}" data-orig="${dl===null?"":dl}">
+    <label for="sr_${k}">İllik faiz, %</label><input id="sr_${k}" type="number" step="0.01" min="0" placeholder="—" value="${f.rate!=null?f.rate:""}">`;});
   $("settings").innerHTML=h;
 }
 
@@ -1567,6 +1583,7 @@ $("saveSettings").onclick=async()=>{
     if(!$("sb_"+f.key)) return;
     const bank=$("sb_"+f.key).value.trim(); if(bank) f.bank=bank; else delete f.bank;
     const taken=parseFloat($("st_"+f.key).value); if(taken>0) f.taken=taken; else delete f.taken;
+    const rt=$("sr_"+f.key); if(rt){const v=parseFloat(rt.value); if(rt.value.trim()!==""&&v>=0) f.rate=v; else delete f.rate;}
   });
   // a typed balance means "this is what I owe right now"; re-anchor it to this month so later ✓ keep counting down
   const curK=TODAY.slice(0,7);
