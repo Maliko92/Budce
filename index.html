@@ -1343,15 +1343,28 @@ function renderYear(){
 /* ---------- car log: what was changed on the car, when, at what mileage, what the part and the work cost ----------
    Stored apart from the budget (this phone, or budget/car on the Claude page). A new record can also be written
    as an "Avto" expense of that day; the two stay linked (editing or deleting the record changes the expense too). */
-let car=[], carFilter="", csId=null, csFluid=null;
+let car=[], carFilter="", csId=null, csFluid=null, csExpFrom=null;
+/* the Day page's "Avto" expenses show in the car log too (and count in its totals), unless a car record already
+   stands for them. Such a line can be opened and completed (mileage, part, master) — it then becomes a car record
+   linked to that same expense, so nothing is counted twice. */
+const avtoKey=()=>plan.cats.some(c=>c.key==="avto")?"avto":null;
+const autoPart=n=>{const t=norm(n||""); return /benzin|yanacaq|azs/.test(t)?"Benzin":/parkovka|parking/.test(t)?"Parkovka":/moyka/.test(t)?"Moyka"
+  :/cerime|qai|radar/.test(t)?"Cərimə":/sigorta|sgorta/.test(t)?"Sığorta":/yag/.test(t)?"Motor yağı":"Avto xərc";};
+function dailyCarRows(){
+  const k=avtoKey(); if(!k) return [];
+  const linked=new Set(car.map(r=>r.expId).filter(Boolean));
+  return expenses.filter(e=>e.cat===k&&!linked.has(e.id)).map(e=>({id:"e:"+e.id,exp:e.id,date:e.date,odo:null,part:autoPart(e.note),work:e.note||"",
+    brand:"",place:"",partCost:Number(e.amount)||0,labor:0,next:"",daily:true}));
+}
 const MI=1.609344;
 const carTotal=r=>rnd2(Number(r.partCost||0)+Number(r.labor||0));
 async function saveCar(){ if(store==="db"){await db.doc("budget/car").set({items:car})} else lsSet("car",car); }
 const dFull=ds=>{const [y,m,d]=ds.split("-").map(Number); return `${d} ${SHORT[m-1]} ${y}`;};
-const carNote=r=>[r.part,r.work].filter(Boolean).join(" – ").replace(/\s+/g," ").slice(0,70);
+const carNote=r=>{const a=(r.part||"").trim(), b=(r.work||"").trim();
+  const t=!a?b:!b?a:norm(b).startsWith(norm(a))?b:norm(a).startsWith(norm(b))?a:a+" – "+b; return t.replace(/\s+/g," ").slice(0,70);};
 function renderCar(){
   // newest day first; within a day, the jobs keep the order they were written in
-  const rows=car.slice().sort((a,b)=>b.date.localeCompare(a.date)||String(a.id).localeCompare(String(b.id),undefined,{numeric:true}));
+  const rows=[...car,...dailyCarRows()].sort((a,b)=>b.date.localeCompare(a.date)||String(a.id).localeCompare(String(b.id),undefined,{numeric:true}));
   const sum=l=>rnd2(l.reduce((t,r)=>t+carTotal(r),0)), y=String(now.getFullYear());
   $("carYearLbl").textContent=`Bu il (${y})`; $("carYear").textContent=fmt0(sum(rows.filter(r=>r.date.startsWith(y))))+" ₼";
   $("carAllLbl").textContent=rows.length?`Cəmi (${rows[rows.length-1].date.slice(0,4)}-dən)`:"Cəmi"; $("carAll").textContent=fmt0(sum(rows))+" ₼";
@@ -1369,10 +1382,10 @@ function renderCar(){
   shown.forEach(r=>{
     const ry=r.date.slice(0,4);
     if(ry!==yr){yr=ry; const yl=shown.filter(x=>x.date.startsWith(ry)); body+=`<tr class="cy"><td>${ry}</td><td colspan="7">${fmt0(sum(yl))} ₼ · ${yl.length} qeyd</td></tr>`;}
-    body+=`<tr class="crow" data-car="${esc(r.id)}"><td>${dFull(r.date)}</td>`+
+    body+=`<tr class="crow" ${r.daily?`data-exp="${esc(r.exp)}"`:`data-car="${esc(r.id)}"`}><td>${dFull(r.date)}</td>`+
       `<td class="n">${r.odo?fmt0(r.odo)+`<small>${fmt0(r.odo*MI)} km</small>`:""}</td>`+
       `<td class="pt"><b>${esc(r.part||"—")}</b></td>`+
-      `<td class="w">${r.work?`<div>${esc(r.work)}</div>`:""}${r.qty?`<small>${String(r.qty).replace(".",",")} l</small>`:""}${r.brand?`<small>${esc(r.brand)}</small>`:""}${r.next?`<small>Növbəti: ${esc(r.next)}</small>`:""}</td>`+
+      `<td class="w">${r.work?`<div>${esc(r.work)}</div>`:""}${r.qty?`<small>${String(r.qty).replace(".",",")} l</small>`:""}${r.brand?`<small>${esc(r.brand)}</small>`:""}${r.next?`<small>Növbəti: ${esc(r.next)}</small>`:""}${r.daily?`<small>Gün səhifəsindən</small>`:""}</td>`+
       `<td class="p">${esc(r.place||"")}</td>`+
       `<td class="n">${r.partCost?fmt(r.partCost):""}</td><td class="n">${r.labor?fmt(r.labor):""}</td><td class="n tot">${fmt(carTotal(r))}</td></tr>`;
   });
@@ -1519,10 +1532,11 @@ $("odoForm").addEventListener("submit",async ev=>{
   plan.carOdo={odo:Math.round(v),date:TODAY}; $("odoSheet").hidden=true; renderCar();
   try{await savePlan(); toast("Yadda saxlanıldı")}catch(x){toast("Yadda saxlanmadı")}
 });
-$("carTable").addEventListener("click",ev=>{const r=ev.target.closest("tr[data-car]"); if(r) openCar(r.dataset.car);});
+$("carTable").addEventListener("click",ev=>{const r=ev.target.closest("tr[data-car],tr[data-exp]"); if(!r) return; r.dataset.car?openCar(r.dataset.car):openCar(null,null,r.dataset.exp);});
 $("carAdd").onclick=()=>openCar(null);
-function openCar(id,fluid){
+function openCar(id,fluid,fromExp){
   const r=id?car.find(x=>x.id===id):null; csId=r?r.id:null; csFluid=r?null:(fluid||null);
+  const ex=!r&&fromExp?expenses.find(x=>x.id===fromExp):null; csExpFrom=ex?ex.id:null;
   $("csTitle").textContent=r?"Qeydi düzəlt":"Yeni qeyd";
   $("csDate").value=r?r.date:TODAY; $("csOdo").value=r&&r.odo?r.odo:"";
   $("csPart").value=r?r.part||"":""; $("csWork").value=r?r.work||"":""; $("csBrand").value=r?r.brand||"":""; $("csPlace").value=r?r.place||"":"";
@@ -1530,10 +1544,12 @@ function openCar(id,fluid){
   const last=car.filter(x=>Number(x.odo)>0).sort((a,b)=>b.date.localeCompare(a.date))[0]; $("csOdo").placeholder=last?String(last.odo):"—";
   $("csExpWrap").hidden=!!r; $("csExp").checked=true;
   if(!r&&fluid){const fl=fluids().find(x=>x.key===fluid); $("csPart").value=fl?fl.name:""; $("csWork").value="Dəyişdi"; $("csOdo").value=curOdo()||""; $("csTitle").textContent=(fl?fl.name:"")+" dəyişdi";}
+  if(ex){$("csTitle").textContent="Avto xərcini tamamla"; $("csDate").value=ex.date; $("csPart").value=autoPart(ex.note); $("csWork").value=ex.note||"";
+    $("csCost").value=ex.amount||""; $("csOdo").value=""; $("csExpWrap").hidden=true;}
   $("csDelete").hidden=!r; $("csDelete").textContent="Sil"; delete $("csDelete").dataset.armed;
   $("carSheet").hidden=false;
 }
-function closeCar(){$("carSheet").hidden=true; csId=null; csFluid=null;}
+function closeCar(){$("carSheet").hidden=true; csId=null; csFluid=null; csExpFrom=null;}
 $("csClose").onclick=closeCar;
 $("carSheet").addEventListener("click",ev=>{if(ev.target.id==="carSheet") closeCar()});
 $("csForm").addEventListener("submit",async ev=>{
@@ -1543,7 +1559,7 @@ $("csForm").addEventListener("submit",async ev=>{
     place:$("csPlace").value.trim(),partCost:num("csCost"),labor:num("csLabor"),next:$("csNext").value.trim()};
   if(!rec.date){toast("Tarixi yazın"); return;}
   if(!rec.part&&!rec.work){toast("Nə dəyişdiyini yazın"); return;}
-  const total=rnd2(rec.partCost+rec.labor), old=csId?car.find(x=>x.id===csId):null, withExp=!old&&$("csExp").checked;
+  const total=rnd2(rec.partCost+rec.labor), old=csId?car.find(x=>x.id===csId):null, fromExp=old?null:csExpFrom, withExp=!old&&!fromExp&&$("csExp").checked;
   closeCar();
   try{
     if(old){
@@ -1551,6 +1567,7 @@ $("csForm").addEventListener("submit",async ev=>{
       if(old.expId&&expenses.some(e=>e.id===old.expId)&&total>0) await updExpense(old.expId,{date:rec.date,month:rec.date.slice(0,7),amount:total,note:carNote(old)});
     }else{
       const r={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),...rec}; if(csFluid) r.fluid=csFluid;
+      if(fromExp){r.expId=fromExp; if(total>0) await updExpense(fromExp,{date:rec.date,month:rec.date.slice(0,7),amount:total,note:carNote(r)});}
       if(withExp&&total>0){const e={date:rec.date,month:rec.date.slice(0,7),cat:plan.cats.some(c=>c.key==="avto")?"avto":"diger",amount:total,note:carNote(r),created:Date.now()};
         await addExpense(e); r.expId=e.id;}
       car.push(r);
