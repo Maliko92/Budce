@@ -160,10 +160,13 @@ details summary{cursor:pointer;font-weight:600}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
 .hero4{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
 @media (min-width:640px){.hero4{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.debtlist li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;column-gap:16px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line);font-size:.9rem}
+.debtlist li{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;column-gap:12px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line);font-size:.88rem}
 .debtlist li:first-child{border-top:0}
-.debtlist .num{font-weight:600;text-align:right;min-width:62px}
-.debtlist .now{color:var(--muted);font-weight:400}
+.debtlist .num{text-align:right;min-width:52px;font-weight:400}
+.debtlist .int{color:var(--warn)}
+.debtlist .all{font-weight:700}
+.debtlist li.dtot{border-top:2px solid var(--line);font-weight:700}
+.debtlist li.dtot .num{font-weight:700}
 .debtlist li.dhead{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:0 0 2px}
 .debtlist li.dhead span{text-align:right}
 .debtlist li.dhead span:first-child{text-align:left}
@@ -1146,9 +1149,13 @@ function renderYear(){
   $("yDebt").textContent=fmt0(debtSum)+" ₼"; $("yDebt").style.color="var(--warn)";
   const nowSum=rnd2(plan.fixed.filter(f=>f.debt).reduce((t,f)=>t+payoffOf(f),0)+(plan.card?cardOpenGrace():0));
   $("yDebtNow").textContent=nowSum>0&&nowSum<debtSum-0.5?`indi bağlamaq: ${fmt0(nowSum)} ₼`:"";
-  // each debt: what is left by the schedule, and what closing it today would take
-  $("yDebtList").innerHTML=(debts.length?`<li class="dhead"><span></span><span>Qalıq</span><span>İndi</span></li>`:"")+
-    debts.map(d=>`<li><span>${esc(d.name)}</span>`+(d.left===null?'<span class="num dim">—</span><span class="num dim">—</span>':`<span class="num">${fmt0(d.left)} ₼</span><span class="num now">${fmt0(d.now)} ₼</span>`)+`</li>`).join("");
+  // each debt: the principal left today, the interest still to come, and what will be paid in all
+  const n0=v=>fmt0(v), known=debts.filter(d=>d.left!==null);
+  const tl=rnd2(known.reduce((t,d)=>t+d.left,0)), tn=rnd2(known.reduce((t,d)=>t+d.now,0));
+  $("yDebtList").innerHTML=debts.length?`<li class="dhead"><span>₼</span><span>Əsas borc</span><span>Faiz</span><span>Cəmi</span></li>`+
+    debts.map(d=>`<li><span>${esc(d.name)}</span>`+(d.left===null?'<span class="num dim">—</span><span class="num dim">—</span><span class="num dim">—</span>'
+      :`<span class="num">${n0(d.now)}</span><span class="num int">${n0(rnd2(d.left-d.now))}</span><span class="num all">${n0(d.left)}</span>`)+`</li>`).join("")+
+    (known.length>1?`<li class="dtot"><span>Cəmi</span><span class="num">${n0(tn)}</span><span class="num int">${n0(rnd2(tl-tn))}</span><span class="num all">${n0(tl)}</span></li>`:""):"";
 
   // chart
   const max=Math.max(...rows.map(r=>r.spent),1)*1.1;
