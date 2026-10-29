@@ -184,6 +184,14 @@ details summary{cursor:pointer;font-weight:600}
 .odoline{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--accent-soft);font-size:.9rem;cursor:pointer;border:0;color:var(--fg);font:inherit;text-align:left;width:100%}
 .odoline b{font-family:var(--f-num);font-size:1.05rem}
 .fluids{display:flex;flex-direction:column}
+.ftable tbody tr{cursor:pointer}
+.ftable tbody tr:hover td{background:var(--accent-soft)}
+.ftable td:first-child{font-family:var(--f-body);font-weight:600}
+.ftable .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:8px;vertical-align:1px}
+.ftable .dot.warn{background:var(--warn)} .ftable .dot.bad{background:var(--bad)} .ftable .dot.none{background:var(--line)}
+.ftable td.ok{color:var(--ok);font-weight:700} .ftable td.warn{color:var(--warn);font-weight:700} .ftable td.bad{color:var(--bad);font-weight:700} .ftable td.none{color:var(--muted)}
+.flinfo{display:flex;flex-direction:column;gap:3px;font-size:.88rem;padding:9px 12px;border-radius:10px;background:var(--accent-soft)}
+.flinfo b{font-family:var(--f-num)}
 .fl{display:grid;grid-template-columns:12px minmax(0,1fr) auto;column-gap:10px;row-gap:3px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
 .fl:last-child{border-bottom:0}
 .fl .dot{width:10px;height:10px;border-radius:50%;background:var(--ok);grid-row:1/3;align-self:start;margin-top:6px}
@@ -581,7 +589,7 @@ details summary{cursor:pointer;font-weight:600}
     <section class="panel" aria-label="Yağlar və mayelər">
       <h2>Yağlar və mayelər</h2>
       <button class="odoline" type="button" id="odoBtn"><span>İndiki yürüş</span><span><b id="odoNow">—</b> ✎</span></button>
-      <div class="fluids" id="fluidList"></div>
+      <table class="dtable ftable" id="fluidList"></table>
     </section>
     <section class="panel" aria-label="Təmir və dəyişmələr">
       <div class="cartop"><h2>Təmir qeydləri</h2><button class="btn primary" type="button" id="carAdd">+ Yeni qeyd</button></div>
@@ -685,6 +693,8 @@ details summary{cursor:pointer;font-weight:600}
 <div class="sheet" id="flSheet" hidden>
   <form class="sheet-card" id="flForm">
     <h2 id="flTitle">Motor yağı</h2>
+    <div class="flinfo" id="flInfo"></div>
+    <button class="btn primary" type="button" id="flChange">Dəyişdi – yaz</button>
     <div class="gsrow">
       <div class="field"><label class="label" for="flEvery">Hər neçə mil</label><input id="flEvery" type="number" inputmode="numeric" step="100" min="0" placeholder="—"></div>
       <div class="field"><label class="label" for="flMonths">Hər neçə ay</label><input id="flMonths" type="number" inputmode="numeric" step="1" min="0" placeholder="—"></div>
@@ -1386,27 +1396,29 @@ function fluidState(fl){
 function renderFluids(){
   const odo=curOdo();
   $("odoNow").textContent=odo?`${fmt0(odo)} mil`:"yazın";
-  $("fluidList").innerHTML=fluids().map(fl=>{
+  // one line per fluid: what is left, and when to change next (mileage, or the date if there is no mileage)
+  $("fluidList").innerHTML=`<thead><tr><th>Maye</th><th>Qalıb</th><th>Növbəti</th></tr></thead><tbody>`+fluids().map(fl=>{
     const st=fluidState(fl), L=st.last;
-    const lastTxt=L?`Son: ${dFull(L.date)}${L.odo?` · ${fmt0(L.odo)} mil`:""}`:"Son dəyişmə yazılmayıb";
-    const nextTxt=L&&(st.nOdo||st.nDate)?`<br>Növbəti: ${[st.nOdo?`${fmt0(st.nOdo)} mil`:"",st.nDate?dFull(st.nDate):""].filter(Boolean).join(" və ya ")}`:"";
-    return `<div class="fl"><span class="dot ${st.cls}"></span><button type="button" class="fn" data-fledit="${fl.key}">${esc(fl.name)}</button><span class="fr ${st.cls}">${st.txt}</span>
-      <span class="fs">${lastTxt}${nextTxt}</span><button type="button" class="btn" data-flchg="${fl.key}">Dəyişdi</button></div>`;
-  }).join("");
+    const left=!L?"—":st.cls==="bad"?(st.txt.includes("keçib")?st.txt:"vaxtı keçib"):st.txt.replace(" qalıb","");
+    const next=!L?"yazılmayıb":st.nOdo?`${fmt0(st.nOdo)} mil`:st.nDate?(()=>{const [y,m]=st.nDate.split("-").map(Number); return `${SHORT[m-1]} ${y}`;})():"—";
+    return `<tr data-fl="${fl.key}"><td><span class="dot ${st.cls}"></span>${esc(fl.name)}</td><td class="${st.cls}">${left}</td><td>${next}</td></tr>`;
+  }).join("")+`</tbody>`;
 }
-$("fluidList").addEventListener("click",ev=>{
-  const c=ev.target.closest("[data-flchg]"); if(c){openCar(null,c.dataset.flchg); return;}
-  const e=ev.target.closest("[data-fledit]"); if(e) openFluid(e.dataset.fledit);
-});
+$("fluidList").addEventListener("click",ev=>{const r=ev.target.closest("tr[data-fl]"); if(r) openFluid(r.dataset.fl);});
 let flKey=null;
 function openFluid(key){
   const fl=fluids().find(x=>x.key===key); if(!fl) return; flKey=key;
   const L=fluidLast(fl);
   $("flTitle").textContent=fl.name; $("flEvery").value=fl.every||""; $("flMonths").value=fl.months||"";
+  const st=fluidState(fl);
+  $("flInfo").innerHTML=L?`<span>Son dəyişmə: <b>${dFull(L.date)}</b>${L.odo?` · <b>${fmt0(L.odo)} mil</b>`:""}</span>`+
+    `<span>Növbəti: <b>${[st.nOdo?`${fmt0(st.nOdo)} mil`:"",st.nDate?dFull(st.nDate):""].filter(Boolean).join("</b> və ya <b>")||"—"}</b></span>`+
+    `<span>İndi: <b>${st.txt}</b></span>`:`<span>Son dəyişmə hələ yazılmayıb.</span>`;
   $("flDate").value=L?L.date:""; $("flOdo").value=L&&L.odo?L.odo:"";
   $("flSheet").hidden=false;
 }
 $("flClose").onclick=()=>{$("flSheet").hidden=true};
+$("flChange").onclick=()=>{const k=flKey; $("flSheet").hidden=true; openCar(null,k);};
 $("flSheet").addEventListener("click",ev=>{if(ev.target.id==="flSheet") $("flSheet").hidden=true});
 $("flForm").addEventListener("submit",async ev=>{
   ev.preventDefault();
@@ -1498,12 +1510,77 @@ function carFromWorkbook(X,wb){
         const t=c=>c<0||r[c]==null?"":String(r[c]).trim();
         let partCost=n(cPrice), labor=n(cLab); if(!partCost&&!labor) partCost=n(cTot);
         const rec={id:"x"+(i+1)+"_"+d,date:d,odo:n(cOdo)||null,part:t(cPart),work:t(cWork),brand:t(cBrand),place:t(cPlace),partCost,labor,next:t(cNext)};
-        if(rec.part||rec.work||partCost||labor) out.push(rec);
+        if(rec.part||rec.work||partCost||labor) out.push(...splitRecord(rec));
       });
+      fixOdo(out);
       if(out.length) return out;
     }
   }
   return [];
+}
+/* A cell that lists several jobs ("Kolsa - 150azn / Kladis - 50azn …", lines, or "a; b; c") becomes one record
+   per job with the same date, mileage, part and place. A job's own price goes with it ("- 250 usta pulu" is the
+   master's work). If the jobs carry no prices, the whole cost stays on one extra "hamısı birlikdə" line, and
+   the master's pay that no job claims gets its own "Usta zəhməti" line. Totals stay the same. */
+function splitRecord(r){
+  // a price: "- 70 azn", "-120azn", " 23azn", "- 250 usta pulu", or "- 25" before a capitalised word / the end
+  const PR=/(?:[-–=]+\s*|\s)(\d+(?:[.,]\d+)?)\s*(azn|AZN|Azn|usta pulu)|[-–=]+\s*(\d+(?:[.,]\d+)?)(?=\s+[A-ZƏÖÜÇŞĞİ]|\s*$)/g;
+  const marks=t=>{PR.lastIndex=0; return (String(t||"").match(PR)||[]).length;};
+  let text=r.work||"", fromBrand=false;
+  if(marks(text)<2&&marks(r.brand)>=2){text=r.brand; fromBrand=true;}
+  const clean=t=>t.replace(/\s+/g," ").replace(/^[\s+,;\/.:]+|[\s+,;\/.:–-]+$/g,"").trim();
+  let items=[];
+  if(marks(text)>=2){
+    let last=0, m; PR.lastIndex=0;
+    while((m=PR.exec(text))){
+      let name=clean(text.slice(last,m.index));
+      const v=parseFloat((m[1]||m[3]).replace(",",".")), lab=/usta/.test(m[2]||"");
+      const verb=name.match(/^(deyisdi|dəyişdi|deyisildi|dəyişildi)\b[,\s]*/i);
+      if(verb&&items.length){items[items.length-1].name+=" "+verb[1]; name=clean(name.slice(verb[0].length));}
+      items.push({name,cost:lab?0:v,labor:lab?v:0});
+      last=PR.lastIndex;
+    }
+    const tail=clean(text.slice(last)); if(tail&&items.length) items[items.length-1].name+=" "+tail;
+  }else{
+    const parts=text.split(/\n|;/).map(clean).filter(Boolean);
+    if(parts.length<2) return [r];
+    items=parts.map(n=>({name:n,cost:0,labor:0,noprice:true}));
+  }
+  items=items.filter(i=>i.name||i.cost||i.labor);
+  if(items.length<2) return [r];
+  const J=Number(r.partCost||0), K=Number(r.labor||0);
+  const sc=rnd2(items.reduce((t,i)=>t+i.cost,0)), sl=rnd2(items.reduce((t,i)=>t+i.labor,0));
+  // when the list came from the "Adı" cell, the description written in "Görülən iş" stays under the first job
+  const out=items.map((i,n)=>({...r,id:`${r.id}_${n+1}`,grp:r.id,work:i.name,brand:n?"":fromBrand?(r.work||""):r.brand,next:n?"":r.next,partCost:0,labor:0}));
+  if(items[0].noprice){
+    out.push({...r,id:`${r.id}_${items.length+1}`,grp:r.id,work:"hamısı birlikdə",brand:"",next:"",partCost:J,labor:K});
+  }else if(!sl&&!J&&K&&Math.abs(sc-K)<1){                 // the prices written were the master's work
+    items.forEach((i,n)=>{out[n].labor=i.cost;});
+  }else{
+    items.forEach((i,n)=>{out[n].partCost=i.cost; out[n].labor=i.labor;});
+    if(Math.abs(sc+sl-(J+K))>=1){                          // master's pay or a part no job claims
+      const restL=rnd2(K-sl), restC=rnd2(J-sc);
+      if(restL>0.5) out.push({...r,id:`${r.id}_u`,grp:r.id,work:"Usta zəhməti",brand:"",next:"",partCost:0,labor:restL});
+      if(restC>0.5) out.push({...r,id:`${r.id}_d`,grp:r.id,work:"digər detallar",brand:"",next:"",partCost:restC,labor:0});
+    }
+  }
+  return out;
+}
+// a reading with one digit too many (2,200,950): drop the digit that puts it closest to where the readings
+// before and after say the car was that day (2,200,950 between 220,000 in April and 224,000 in July → 220,950)
+function fixOdo(out){
+  const ok=out.filter(r=>r.odo&&r.odo<1e6).sort((a,b)=>a.date.localeCompare(b.date));
+  out.forEach(r=>{
+    if(!(r.odo>=1e6)) return;
+    const prev=[...ok].reverse().find(x=>x.date<=r.date), next=ok.find(x=>x.date>=r.date);
+    let exp=prev?prev.odo:next?next.odo:0;
+    if(prev&&next&&next.date>prev.date) exp=prev.odo+(next.odo-prev.odo)*(Date.parse(r.date)-Date.parse(prev.date))/(Date.parse(next.date)-Date.parse(prev.date));
+    const t=String(Math.round(r.odo)); let best=null;
+    for(let i=0;i<t.length;i++){const c=Number(t.slice(0,i)+t.slice(i+1));
+      if((prev&&c<prev.odo)||(next&&c>next.odo)) continue;
+      if(best==null||Math.abs(c-exp)<Math.abs(best-exp)) best=c;}
+    r.odo=best!=null?best:Math.round(r.odo/10);
+  });
 }
 $("carImport").onclick=()=>$("carFile").click();
 $("carFile").onchange=async ev=>{
