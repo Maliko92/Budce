@@ -173,6 +173,7 @@ details summary{cursor:pointer;font-weight:600}
 .ctable td.w{min-width:180px;max-width:250px}
 .ctable td.w div{white-space:pre-line}
 .ctable td.p{min-width:120px;max-width:180px;color:var(--muted)}
+.ctable td.pt{min-width:96px;max-width:140px}
 .ctable td small{display:block;color:var(--muted);font-size:.74rem;font-family:var(--f-body)}
 .ctable td.tot{font-weight:700}
 .ctable tr.cy td{background:var(--bg);font-weight:700;color:var(--accent);border-bottom:2px solid var(--line)}
@@ -1320,7 +1321,8 @@ async function saveCar(){ if(store==="db"){await db.doc("budget/car").set({items
 const dFull=ds=>{const [y,m,d]=ds.split("-").map(Number); return `${d} ${SHORT[m-1]} ${y}`;};
 const carNote=r=>[r.part,r.work].filter(Boolean).join(" – ").replace(/\s+/g," ").slice(0,70);
 function renderCar(){
-  const rows=car.slice().sort((a,b)=>b.date.localeCompare(a.date)||String(b.id).localeCompare(String(a.id)));
+  // newest day first; within a day, the jobs keep the order they were written in
+  const rows=car.slice().sort((a,b)=>b.date.localeCompare(a.date)||String(a.id).localeCompare(String(b.id),undefined,{numeric:true}));
   const sum=l=>rnd2(l.reduce((t,r)=>t+carTotal(r),0)), y=String(now.getFullYear());
   $("carYearLbl").textContent=`Bu il (${y})`; $("carYear").textContent=fmt0(sum(rows.filter(r=>r.date.startsWith(y))))+" ₼";
   $("carAllLbl").textContent=rows.length?`Cəmi (${rows[rows.length-1].date.slice(0,4)}-dən)`:"Cəmi"; $("carAll").textContent=fmt0(sum(rows))+" ₼";
@@ -1332,17 +1334,20 @@ function renderCar(){
   $("csParts").innerHTML=parts.map(p=>`<option value="${esc(p)}">`).join("");
   $("csPlaces").innerHTML=[...new Set(rows.map(r=>(r.place||"").trim()).filter(Boolean))].map(p=>`<option value="${esc(p)}">`).join("");
   const shown=carFilter?rows.filter(r=>(r.part||"").trim()===carFilter):rows;
-  const head=`<thead><tr><th>Tarix</th><th>Yürüş, mil</th><th>Nə dəyişib</th><th>Detal ₼</th><th>Usta ₼</th><th>Cəmi ₼</th><th>Usta / yer</th></tr></thead>`;
+  // columns: when, mileage, part, what was done, where — then the money at the end
+  const head=`<thead><tr><th>Tarix</th><th>Yürüş, mil</th><th>Hissə</th><th>Görülən iş</th><th>Harda edilib</th><th>Detal ₼</th><th>Usta ₼</th><th>Cəmi ₼</th></tr></thead>`;
   let body="", yr=null;
   shown.forEach(r=>{
     const ry=r.date.slice(0,4);
-    if(ry!==yr){yr=ry; const yl=shown.filter(x=>x.date.startsWith(ry)); body+=`<tr class="cy"><td>${ry}</td><td colspan="6">${fmt0(sum(yl))} ₼ · ${yl.length} qeyd</td></tr>`;}
+    if(ry!==yr){yr=ry; const yl=shown.filter(x=>x.date.startsWith(ry)); body+=`<tr class="cy"><td>${ry}</td><td colspan="7">${fmt0(sum(yl))} ₼ · ${yl.length} qeyd</td></tr>`;}
     body+=`<tr class="crow" data-car="${esc(r.id)}"><td>${dFull(r.date)}</td>`+
       `<td class="n">${r.odo?fmt0(r.odo)+`<small>${fmt0(r.odo*MI)} km</small>`:""}</td>`+
-      `<td class="w"><b>${esc(r.part||"—")}</b>${r.work?`<div>${esc(r.work)}</div>`:""}${r.brand?`<small>${esc(r.brand)}</small>`:""}${r.next?`<small>Növbəti: ${esc(r.next)}</small>`:""}</td>`+
-      `<td class="n">${r.partCost?fmt(r.partCost):""}</td><td class="n">${r.labor?fmt(r.labor):""}</td><td class="n tot">${fmt(carTotal(r))}</td><td class="p">${esc(r.place||"")}</td></tr>`;
+      `<td class="pt"><b>${esc(r.part||"—")}</b></td>`+
+      `<td class="w">${r.work?`<div>${esc(r.work)}</div>`:""}${r.brand?`<small>${esc(r.brand)}</small>`:""}${r.next?`<small>Növbəti: ${esc(r.next)}</small>`:""}</td>`+
+      `<td class="p">${esc(r.place||"")}</td>`+
+      `<td class="n">${r.partCost?fmt(r.partCost):""}</td><td class="n">${r.labor?fmt(r.labor):""}</td><td class="n tot">${fmt(carTotal(r))}</td></tr>`;
   });
-  $("carTable").innerHTML=head+`<tbody>${body||`<tr><td colspan="7" class="empty">Hələ qeyd yoxdur. "+ Yeni qeyd" ilə əlavə edin və ya köhnə Excel cədvəlinizi köçürün.</td></tr>`}</tbody>`;
+  $("carTable").innerHTML=head+`<tbody>${body||`<tr><td colspan="8" class="empty">Hələ qeyd yoxdur. "+ Yeni qeyd" ilə əlavə edin və ya köhnə Excel cədvəlinizi köçürün.</td></tr>`}</tbody>`;
   updateHints();
 }
 $("carFilter").onchange=ev=>{carFilter=ev.target.value; renderCar();};
