@@ -192,6 +192,14 @@ details summary{cursor:pointer;font-weight:600}
 .ftable .dot.warn{background:var(--warn)} .ftable .dot.bad{background:var(--bad)} .ftable .dot.none{background:var(--line)}
 .ftable td.ok{color:var(--ok);font-weight:700} .ftable td.warn{color:var(--warn);font-weight:700} .ftable td.bad{color:var(--bad);font-weight:700} .ftable td.none{color:var(--muted)}
 .flinfo{display:flex;flex-direction:column;gap:3px;font-size:.88rem;padding:9px 12px;border-radius:10px;background:var(--accent-soft)}
+.ftable td small{display:block;font-size:.74rem;color:var(--muted);font-weight:400;font-family:var(--f-body)}
+.ftable td{white-space:normal}
+.ftable td .dim{font-family:var(--f-body)}
+.oilbox{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.oilbox .cartop h3{font-size:.95rem;margin:0}
+.oilrow{display:flex;justify-content:space-between;gap:10px;font-size:.88rem}
+.oilrow span:first-child{color:var(--muted)}
+.oilrow b{font-family:var(--f-num);text-align:right}
 .flinfo b{font-family:var(--f-num)}
 .fl{display:grid;grid-template-columns:12px minmax(0,1fr) auto;column-gap:10px;row-gap:3px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
 .fl:last-child{border-bottom:0}
@@ -591,6 +599,10 @@ details summary{cursor:pointer;font-weight:600}
       <h2>Yağlar və mayelər</h2>
       <button class="odoline" type="button" id="odoBtn"><span>İndiki yürüş</span><span><b id="odoNow">—</b> ✎</span></button>
       <table class="dtable ftable" id="fluidList"></table>
+      <div class="oilbox" id="oilBox">
+        <div class="cartop"><h3>Motor yağı əlavələri</h3><button class="btn" type="button" id="topAdd">+ Yağ əlavə etdim</button></div>
+        <div id="oilStats"></div>
+      </div>
     </section>
     <section class="panel" aria-label="Təmir və dəyişmələr">
       <div class="cartop"><h2>Təmir qeydləri</h2><button class="btn primary" type="button" id="carAdd">+ Yeni qeyd</button></div>
@@ -696,6 +708,7 @@ details summary{cursor:pointer;font-weight:600}
     <h2 id="flTitle">Motor yağı</h2>
     <div class="flinfo" id="flInfo"></div>
     <button class="btn primary" type="button" id="flChange">Dəyişdi – yaz</button>
+    <div class="field"><label class="label" for="flOil">Yağın adı, növü</label><input id="flOil" type="text" autocomplete="off" placeholder="Motul 5W-40"></div>
     <div class="gsrow">
       <div class="field"><label class="label" for="flEvery">Hər neçə mil</label><input id="flEvery" type="number" inputmode="numeric" step="100" min="0" placeholder="—"></div>
       <div class="field"><label class="label" for="flMonths">Hər neçə ay</label><input id="flMonths" type="number" inputmode="numeric" step="1" min="0" placeholder="—"></div>
@@ -713,6 +726,21 @@ details summary{cursor:pointer;font-weight:600}
     <h2>İndiki yürüş</h2>
     <div class="field"><label class="label" for="odoInput">Spidometrdə nə yazılıb, mil</label><input id="odoInput" type="number" inputmode="numeric" step="1" min="0" required></div>
     <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn" type="button" id="odoClose">Bağla</button></div>
+  </form>
+</div>
+<div class="sheet" id="topSheet" hidden>
+  <form class="sheet-card" id="topForm">
+    <h2>Yağ əlavə etdim</h2>
+    <div class="gsrow">
+      <div class="field"><label class="label" for="topDate">Tarix</label><input id="topDate" type="date" required></div>
+      <div class="field"><label class="label" for="topOdo">Yürüş, mil</label><input id="topOdo" type="number" inputmode="numeric" step="1" min="0" placeholder="—"></div>
+    </div>
+    <div class="gsrow">
+      <div class="field"><label class="label" for="topL">Neçə litr</label><input id="topL" type="number" inputmode="decimal" step="0.1" min="0.1" required></div>
+      <div class="field"><label class="label" for="topCost">Qiyməti, ₼</label><input id="topCost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="topExp" checked> Gündəlik xərclərə də yaz (Avto)</label>
+    <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn" type="button" id="topClose">Bağla</button></div>
   </form>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -1343,7 +1371,7 @@ function renderCar(){
     body+=`<tr class="crow" data-car="${esc(r.id)}"><td>${dFull(r.date)}</td>`+
       `<td class="n">${r.odo?fmt0(r.odo)+`<small>${fmt0(r.odo*MI)} km</small>`:""}</td>`+
       `<td class="pt"><b>${esc(r.part||"—")}</b></td>`+
-      `<td class="w">${r.work?`<div>${esc(r.work)}</div>`:""}${r.brand?`<small>${esc(r.brand)}</small>`:""}${r.next?`<small>Növbəti: ${esc(r.next)}</small>`:""}</td>`+
+      `<td class="w">${r.work?`<div>${esc(r.work)}</div>`:""}${r.qty?`<small>${String(r.qty).replace(".",",")} l</small>`:""}${r.brand?`<small>${esc(r.brand)}</small>`:""}${r.next?`<small>Növbəti: ${esc(r.next)}</small>`:""}</td>`+
       `<td class="p">${esc(r.place||"")}</td>`+
       `<td class="n">${r.partCost?fmt(r.partCost):""}</td><td class="n">${r.labor?fmt(r.labor):""}</td><td class="n tot">${fmt(carTotal(r))}</td></tr>`;
   });
@@ -1374,10 +1402,10 @@ function curOdo(){
 }
 function fluidLast(fl){
   let best=null;
-  const take=(date,odo,next)=>{if(!date) return; if(!best||date>best.date) best={date,odo:Number(odo)||null,next:next||""};
-    else if(date===best.date&&!best.odo&&odo) best.odo=Number(odo);};
-  if(fl.last&&fl.last.date) take(fl.last.date,fl.last.odo,"");
-  car.forEach(r=>{const t=norm([r.part,r.work,r.brand].join(" ")); if(r.fluid===fl.key||(!r.fluid&&FLUID_RX[fl.key]&&FLUID_RX[fl.key](t))) take(r.date,r.odo,r.next);});
+  const take=(date,odo,next,brand)=>{if(!date) return; if(!best||date>best.date) best={date,odo:Number(odo)||null,next:next||"",brand:brand||""};
+    else if(date===best.date){if(!best.odo&&odo) best.odo=Number(odo); if(!best.brand&&brand) best.brand=brand;}};
+  if(fl.last&&fl.last.date) take(fl.last.date,fl.last.odo,"","");
+  car.forEach(r=>{if(r.topup) return; const t=norm([r.part,r.work,r.brand].join(" ")); if(r.fluid===fl.key||(!r.fluid&&FLUID_RX[fl.key]&&FLUID_RX[fl.key](t))) take(r.date,r.odo,r.next,r.brand);});
   return best;
 }
 const addMonths=(ds,n)=>{const [y,m,d]=ds.split("-").map(Number); const dt=new Date(y,m-1+n,d); return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;};
@@ -1398,23 +1426,69 @@ function fluidState(fl){
   else txt="—";
   return {last,nOdo,nDate,cls:late?"bad":soon?"warn":"ok",txt};
 }
+const oilOf=fl=>{if(fl.oil) return fl.oil; const L=fluidLast(fl); return L&&L.brand&&!/\s{2}|\n/.test(L.brand)&&L.brand.length<30?L.brand:"";};
+const mYear=ds=>{const [y,m]=ds.split("-").map(Number); return `${SHORT[m-1]} ${y}`;};
 function renderFluids(){
   const odo=curOdo();
   $("odoNow").textContent=odo?`${fmt0(odo)} mil`:"yazın";
-  // one line per fluid: what is left, and when to change next (mileage, or the date if there is no mileage)
-  $("fluidList").innerHTML=`<thead><tr><th>Maye</th><th>Qalıb</th><th>Növbəti</th></tr></thead><tbody>`+fluids().map(fl=>{
-    const st=fluidState(fl), L=st.last;
-    const left=!L?"—":st.cls==="bad"?(st.txt.includes("keçib")?st.txt:"vaxtı keçib"):st.txt.replace(" qalıb","");
-    const next=!L?"yazılmayıb":st.nOdo?`${fmt0(st.nOdo)} mil`:st.nDate?(()=>{const [y,m]=st.nDate.split("-").map(Number); return `${SHORT[m-1]} ${y}`;})():"—";
-    return `<tr data-fl="${fl.key}"><td><span class="dot ${st.cls}"></span>${esc(fl.name)}</td><td class="${st.cls}">${left}</td><td>${next}</td></tr>`;
+  // one line per fluid: its oil, when it was changed, and when it has to be changed next
+  $("fluidList").innerHTML=`<thead><tr><th>Maye</th><th>Son dəyişmə</th><th>Nə vaxt dəyişməli</th></tr></thead><tbody>`+fluids().map(fl=>{
+    const st=fluidState(fl), L=st.last, oil=oilOf(fl);
+    const last=L?`${dFull(L.date)}${L.odo?`<small>${fmt0(L.odo)} mil</small>`:""}`:`<span class="dim">yazılmayıb</span>`;
+    const when=!L?"—":st.nOdo?`${fmt0(st.nOdo)} mil${st.nDate?`<small>ən gec ${mYear(st.nDate)}</small>`:""}`:st.nDate?mYear(st.nDate):"—";
+    return `<tr data-fl="${fl.key}"><td><span class="dot ${st.cls}"></span>${esc(fl.name)}${oil?`<small>${esc(oil)}</small>`:""}</td><td>${last}</td><td class="${st.cls==="bad"?"bad":""}">${when}</td></tr>`;
   }).join("")+`</tbody>`;
+  renderOil();
 }
 $("fluidList").addEventListener("click",ev=>{const r=ev.target.closest("tr[data-fl]"); if(r) openFluid(r.dataset.fl);});
+/* engine oil top-ups: a record with litres that is not a change (made with "+ Yağ əlavə etdim", or an old
+   Excel line like "Motor yag · Meguin 5W-40 · 1 litr"). Shown: since the last change, the last 12 months,
+   and litres per 1,000 miles over those 12 months (mileage from any readings in the log or written by hand). */
+function isTopup(r){
+  if(r.topup) return true;
+  const q=Number(r.qty)||0, t=norm([r.part,r.work,r.brand].join(" "));
+  return q>0&&q<4&&/motor|5w|meguin|motul/.test(t)&&/yag|5w/.test(t)&&!/deyis/.test(t)&&!/karopka|rulavoy|antifr/.test(t);
+}
+function renderOil(){
+  const fl=fluids().find(x=>x.key==="motor"), L=fl?fluidLast(fl):null, odo=curOdo();
+  const tops=car.filter(isTopup).sort((a,b)=>a.date.localeCompare(b.date)), lit=l=>rnd2(l.reduce((t,r)=>t+(Number(r.qty)||0),0));
+  const lt=v=>String(Math.round(v*10)/10).replace(".",",")+" l";
+  const since=L?tops.filter(r=>r.date>L.date):tops, from=addMonths(TODAY,-12), year=tops.filter(r=>r.date>=from);
+  // mileage over the 12 months: the first reading on or after the start, to the newest one
+  const reads=[...car.filter(r=>r.odo&&r.odo<1e6).map(r=>({d:r.date,o:Number(r.odo)})),...(plan.carOdo&&plan.carOdo.odo?[{d:plan.carOdo.date||TODAY,o:Number(plan.carOdo.odo)}]:[])].sort((a,b)=>a.d.localeCompare(b.d));
+  const first=reads.find(x=>x.d>=from), miles=first&&odo?odo-first.o:0;
+  const yl=lit(year.filter(r=>!first||r.date>first.d)), rate=miles>=500?yl/miles*1000:null;
+  const last=tops[tops.length-1];
+  const row=(a,b)=>`<div class="oilrow"><span>${a}</span><b>${b}</b></div>`;
+  $("oilStats").innerHTML=
+    row(L?`Son dəyişmədən bəri (${dFull(L.date)})`:"Hamısı",`${lt(lit(since))}${since.length?` · ${since.length} dəfə`:""}`)+
+    row("Son 12 ayda",`${lt(lit(year))}${year.length?` · ${year.length} dəfə`:""}`)+
+    (rate!=null?row("Orta yeyir",`${lt(rate)} / 1000 mil`):"")+
+    (last?row("Son əlavə",`${dFull(last.date)} · ${lt(Number(last.qty)||0)}`):"");
+}
+$("topAdd").onclick=()=>{$("topDate").value=TODAY; $("topOdo").value=curOdo()||""; $("topL").value="1"; $("topCost").value=""; $("topExp").checked=true; $("topSheet").hidden=false;};
+$("topClose").onclick=()=>{$("topSheet").hidden=true};
+$("topSheet").addEventListener("click",ev=>{if(ev.target.id==="topSheet") $("topSheet").hidden=true});
+$("topForm").addEventListener("submit",async ev=>{
+  ev.preventDefault();
+  const q=parseFloat($("topL").value), cost=rnd2(parseFloat($("topCost").value)||0), date=$("topDate").value, o=parseFloat($("topOdo").value)||null;
+  if(!(q>0)||!date){toast("Tarix və litri yazın"); return;}
+  const fl=fluids().find(x=>x.key==="motor");
+  const r={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),date,odo:o?Math.round(o):null,part:"Motor yağı",work:"Yağ əlavə edildi",
+    brand:fl?oilOf(fl):"",place:"",partCost:cost,labor:0,next:"",qty:rnd2(q),topup:true};
+  $("topSheet").hidden=true;
+  try{
+    if($("topExp").checked&&cost>0){const e={date,month:date.slice(0,7),cat:plan.cats.some(c=>c.key==="avto")?"avto":"diger",amount:cost,note:`Motor yağı əlavə – ${String(q).replace(".",",")} l`,created:Date.now()}; await addExpense(e); r.expId=e.id;}
+    car.push(r);
+    if(r.odo&&r.odo>curOdo()){plan.carOdo={odo:r.odo,date}; savePlan().catch(()=>{});}
+    renderCar(); await saveCar(); toast("Yazıldı");
+  }catch(x){toast("Yadda saxlanmadı")}
+});
 let flKey=null;
 function openFluid(key){
   const fl=fluids().find(x=>x.key===key); if(!fl) return; flKey=key;
   const L=fluidLast(fl);
-  $("flTitle").textContent=fl.name; $("flEvery").value=fl.every||""; $("flMonths").value=fl.months||"";
+  $("flTitle").textContent=fl.name; $("flEvery").value=fl.every||""; $("flMonths").value=fl.months||""; $("flOil").value=oilOf(fl);
   const st=fluidState(fl);
   $("flInfo").innerHTML=L?`<span>Son dəyişmə: <b>${dFull(L.date)}</b>${L.odo?` · <b>${fmt0(L.odo)} mil</b>`:""}</span>`+
     `<span>Növbəti: <b>${[st.nOdo?`${fmt0(st.nOdo)} mil`:"",st.nDate?dFull(st.nDate):""].filter(Boolean).join("</b> və ya <b>")||"—"}</b></span>`+
@@ -1430,6 +1504,7 @@ $("flForm").addEventListener("submit",async ev=>{
   const list=fluids(), fl=list.find(x=>x.key===flKey); if(!fl) return;
   const n=id=>{const v=parseFloat($(id).value); return v>0?v:null;};
   fl.every=n("flEvery"); fl.months=n("flMonths");
+  const oil=$("flOil").value.trim(); if(oil) fl.oil=oil; else delete fl.oil;
   const d=$("flDate").value, o=n("flOdo"), L=fluidLast({...fl,last:null});
   if(d&&(!L||d!==L.date||(o||null)!==(L.odo||null))) fl.last={date:d,odo:o}; else if(!d) delete fl.last;
   plan.fluids=list; $("flSheet").hidden=true; renderCar();
@@ -1507,14 +1582,15 @@ function carFromWorkbook(X,wb){
       if(cDate<0||cOdo<0) continue;
       const cNext=col(t=>t.includes("novbeti")), cPart=col(t=>t.includes("hisse")), cWork=col(t=>t.includes("gorulen")), cBrand=col(t=>t.startsWith("adi")),
         cPlace=col(t=>t.includes("mekan")), cLab=col(t=>t.includes("usta")), cTot=col(t=>t.includes("yekun")),
-        cPrice=col(t=>t.includes("qiymet")&&!t.includes("usta")&&!t.includes("yekun"));
+        cPrice=col(t=>t.includes("qiymet")&&!t.includes("usta")&&!t.includes("yekun")), cQty=col(t=>t.includes("miqdar"));
       const out=[];
       rows.slice(h+1).forEach((r,i)=>{
         const d=toISO(r[cDate]); if(!d) return;
         const n=c=>{if(c<0||r[c]==null) return 0; const x=typeof r[c]==="number"?r[c]:parseFloat(String(r[c]).replace(",",".")); return x>0?rnd2(x):0;};
         const t=c=>c<0||r[c]==null?"":String(r[c]).trim();
         let partCost=n(cPrice), labor=n(cLab); if(!partCost&&!labor) partCost=n(cTot);
-        const rec={id:"x"+(i+1)+"_"+d,date:d,odo:n(cOdo)||null,part:t(cPart),work:t(cWork),brand:t(cBrand),place:t(cPlace),partCost,labor,next:t(cNext)};
+        const lq=t(cQty).match(/(\d+(?:[.,]\d+)?)\s*(?:l\b|lt|litr|litir)/i);
+        const rec={id:"x"+(i+1)+"_"+d,date:d,odo:n(cOdo)||null,part:t(cPart),work:t(cWork),brand:t(cBrand),place:t(cPlace),partCost,labor,next:t(cNext),qty:lq?parseFloat(lq[1].replace(",",".")):null};
         if(rec.part||rec.work||partCost||labor) out.push(...splitRecord(rec));
       });
       fixOdo(out);
@@ -1556,7 +1632,7 @@ function splitRecord(r){
   const J=Number(r.partCost||0), K=Number(r.labor||0);
   const sc=rnd2(items.reduce((t,i)=>t+i.cost,0)), sl=rnd2(items.reduce((t,i)=>t+i.labor,0));
   // when the list came from the "Adı" cell, the description written in "Görülən iş" stays under the first job
-  const out=items.map((i,n)=>({...r,id:`${r.id}_${n+1}`,grp:r.id,work:i.name,brand:n?"":fromBrand?(r.work||""):r.brand,next:n?"":r.next,partCost:0,labor:0}));
+  const out=items.map((i,n)=>({...r,id:`${r.id}_${n+1}`,grp:r.id,work:i.name,brand:n?"":fromBrand?(r.work||""):r.brand,next:n?"":r.next,partCost:0,labor:0,qty:null}));
   if(items[0].noprice){
     out.push({...r,id:`${r.id}_${items.length+1}`,grp:r.id,work:"hamısı birlikdə",brand:"",next:"",partCost:J,labor:K});
   }else if(!sl&&!J&&K&&Math.abs(sc-K)<1){                 // the prices written were the master's work
@@ -1761,8 +1837,8 @@ function buildWorkbook(X){
   X.utils.book_append_sheet(wb,w4,"Sabit ödənişlər");
   if(car.length){
     const cr=car.slice().sort((a,b)=>a.date.localeCompare(b.date));
-    const ra=[["Tarix","Yürüş (mil)","Yürüş (km)","Hissə","Görülən iş","Detal, marka","Usta / yer","Detalın pulu (₼)","Usta pulu (₼)","Cəmi (₼)","Növbəti"],
-      ...cr.map(r=>[serial(r.date),r.odo||"",r.odo?Math.round(r.odo*MI):"",r.part||"",r.work||"",r.brand||"",r.place||"",Number(r.partCost||0),Number(r.labor||0),carTotal(r),r.next||""]),
+    const ra=[["Tarix","Yürüş (mil)","Yürüş (km)","Hissə","Görülən iş","Detal, marka","Usta / yer","Detalın pulu (₼)","Usta pulu (₼)","Cəmi (₼)","Növbəti","Litr"],
+      ...cr.map(r=>[serial(r.date),r.odo||"",r.odo?Math.round(r.odo*MI):"",r.part||"",r.work||"",r.brand||"",r.place||"",Number(r.partCost||0),Number(r.labor||0),carTotal(r),r.next||"",r.qty||""]),
       [],["","","","","","","Cəmi",r2d(cr.reduce((t,r)=>t+Number(r.partCost||0),0)),r2d(cr.reduce((t,r)=>t+Number(r.labor||0),0)),r2d(cr.reduce((t,r)=>t+carTotal(r),0)),""]];
     const wc=X.utils.aoa_to_sheet(ra);
     for(let r=2;r<=cr.length+1;r++){wc["A"+r].z="dd.mm.yyyy"}
