@@ -254,9 +254,13 @@ details summary{cursor:pointer;font-weight:600}
 .incview .incsum{font-size:1.25rem;font-weight:700;color:var(--ok);white-space:nowrap}
 .incview .x{font-size:1.05rem;padding:6px 8px}
 .incview:hover .x{color:var(--accent)}
-.incleft{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:.92rem;color:var(--muted)}
-.incleft b{font-family:var(--f-num);color:var(--fg);margin-left:4px}
-.incleft .rest b{font-size:1.15rem}
+.incleft{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.incleft>span{display:flex;flex-direction:column;gap:2px;align-items:flex-start;min-width:0}
+.incleft>span:last-child{align-items:flex-end}
+.incleft.three>span:nth-child(2){align-items:center}
+.incleft small{font-size:.8rem;color:var(--muted)}
+.incleft b{font-family:var(--f-num);color:var(--fg);font-size:.98rem;white-space:nowrap}
+.incleft .rest b{font-size:1.05rem}
 .incrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}
 .incrow label{display:flex;flex-direction:column;gap:3px;min-width:0}
 .incrow input{font-family:var(--f-num);font-size:1rem;text-align:right}
@@ -286,6 +290,7 @@ details summary{cursor:pointer;font-weight:600}
 .yt tr.grand td{font-weight:700;border-top:2px solid var(--muted)}
 .yt tr.net td{font-weight:800;font-size:.95rem}
 .yt tr.info td{color:var(--muted);font-size:.8rem}
+.yt tr.carry td{font-size:.82rem}
 .yt .est{color:var(--muted)}
 .mplist li{display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--line);cursor:pointer;font-size:.92rem}
 .mpsum{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
@@ -533,7 +538,11 @@ details summary{cursor:pointer;font-weight:600}
         <button class="btn primary" type="submit">Yaz</button>
       </div>
     </form>
-    <div class="incleft" id="incLeft" hidden><span>Xərc<b id="incSpent"></b></span><span class="rest">Qalıq<b id="incRest"></b></span></div>
+    <div class="incleft" id="incLeft" hidden>
+      <span id="incCarry"><small>Keçən aydan</small><b id="incCarryV"></b></span>
+      <span><small>Xərc</small><b id="incSpent"></b></span>
+      <span class="rest"><small>Qalıq</small><b id="incRest"></b></span>
+    </div>
   </section>
 
 
@@ -906,6 +915,11 @@ function migrateV13(){
   if(plan.card&&!(Number(plan.card.limit)>0)) plan.card.limit=10000;
   plan.v13=true; lsSet("plan",plan);
 }
+function migrateV14(){
+  if(plan.v14) return;
+  if(!plan.start) plan.start="2026-11";
+  plan.v14=true; lsSet("plan",plan);
+}
 function migrateV8(){
   if(plan.v8) return;
   const fi=plan.cats.findIndex(c=>c.key==="fond");
@@ -954,7 +968,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{}); car=lsGet("car",[]);
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -1005,7 +1019,9 @@ const totalIncome=mk=>rnd2(incomeFor(mk)+extraFor(mk));
 const curIdx=()=>now.getFullYear()*12+now.getMonth();
 const isFutureM=mk=>{const [y,m]=mk.split("-").map(Number); return y*12+m-1>curIdx();};
 // does the year count this month? this month always; any other month once something is written for it
-const monthCounts=mk=>{const pm=paid[mk]||{}; return !isFutureM(mk)&&mk===`${now.getFullYear()}-${pad(now.getMonth()+1)}`
+// the month the app counts from (Settings → "Hesab başlanğıcı"): earlier months stay saved but are not counted
+const beforeStart=mk=>!!plan.start&&mk<plan.start;
+const monthCounts=mk=>{if(beforeStart(mk)) return false; const pm=paid[mk]||{}; return !isFutureM(mk)&&mk===`${now.getFullYear()}-${pad(now.getMonth()+1)}`
   ||expenses.some(e=>e.month===mk)||incomeSet(mk)||extraFor(mk)>0||plan.fixed.some(f=>pm[f.key])
   ||(!!plan.card&&cardBal().some(x=>x.d.slice(0,7)===mk));};
 // salary the year counts: what was written; for this month and earlier ones the usual salary until it is written
@@ -1147,10 +1163,14 @@ function renderIncome(mk){
   sub.textContent=editing?"düzəliş":thisM?"maaş gələndə yazın":"yazılmayıb";
   $("incAmount").placeholder=fmt0(plan.income);
   // what is left of the month's income after what was spent (the same numbers as the year table)
-  const T=yearTable(y), inc=T.rows[0].vals[m-1], spent=T.rows[4].vals[m-1], net=T.rows[5].vals[m-1], est=T.rows[0].est&&T.rows[0].est[m-1];
+  const T=yearTable(y), i=m-1, spent=T.all.vals[i], net=T.net.vals[i], cin=T.carry.vals[i], est=T.inc.est&&T.inc.est[i];
+  const sg=(v,plus)=>(v<0?"−":plus&&v>0?"+":"")+fmt0(Math.abs(v))+" ₼", col=v=>v<0?"var(--bad)":"var(--ok)";
   $("incLeft").hidden=net==null;
-  if(net!=null){$("incSpent").textContent=fmt0(spent||0)+" ₼";
-    $("incRest").textContent=(est?"≈":"")+fmt0(net)+" ₼"; $("incRest").style.color=net<0?"var(--bad)":"var(--ok)";}
+  if(net!=null){
+    $("incCarry").hidden=cin==null; $("incLeft").classList.toggle("three",cin!=null);
+    if(cin!=null){$("incCarryV").textContent=sg(cin,true); $("incCarryV").style.color=col(cin);}
+    $("incSpent").textContent=fmt0(spent||0)+" ₼";
+    $("incRest").textContent=(est?"≈":"")+sg(net); $("incRest").style.color=col(net);}
   const inp=$("incAmount"), ex=$("incExtra");
   if((document.activeElement!==inp&&document.activeElement!==ex)||inp.dataset.mk!==mk) fillIncome(mk);
 }
@@ -1312,7 +1332,7 @@ function renderYear(){
   const nowKey=now.getFullYear()*12+now.getMonth();
   const rows=[...Array(12)].map((_,m)=>{
     const key=`${yCur}-${pad(m+1)}`;
-    const ex=expenses.filter(e=>e.month===key);
+    const ex=beforeStart(key)?[]:expenses.filter(e=>e.month===key);
     const spent=ex.reduce((s,e)=>s+Number(e.amount||0),0);
     const idx=yCur*12+m; const future=idx>nowKey; const has=ex.length>0;
     const active=monthCounts(key), inc=active?rnd2(salaryCounted(key)+extraFor(key)):0;
@@ -1324,8 +1344,8 @@ function renderYear(){
   const act=rows.filter(r=>r.active);
   const sum=k=>act.reduce((s,r)=>s+r[k],0);
   // the three numbers that matter for the year: income, what was actually spent, and what is still owed
-  const YT=yearTable(yCur), income=YT.rows[0].total||0, spentAll=YT.rows[4].total||0;
-  const leftY=rnd2(income-spentAll);
+  const YT=yearTable(yCur), income=YT.inc.total||0, spentAll=YT.all.total||0;
+  const leftY=YT.net.total!=null?YT.net.total:rnd2(income-spentAll);
   $("yIncome").textContent=fmt0(income)+" ₼";
   $("ySpent").textContent=fmt0(spentAll)+" ₼";
   $("yLeft").textContent=fmt0(leftY)+" ₼"; $("yLeft").style.color=leftY<0?"var(--bad)":"var(--ok)";
@@ -1364,7 +1384,7 @@ function renderYear(){
   renderYearTable();
 
   // category report for the whole year
-  renderCatReport("y",expenses.filter(e=>e.month.startsWith(yCur+"-")),`${yCur} ili`);
+  renderCatReport("y",expenses.filter(e=>e.month.startsWith(yCur+"-")&&!beforeStart(e.month)),`${yCur} ili`);
 
   autoScroll();
 }
@@ -1727,24 +1747,24 @@ const yOpen=new Set();
 function yearTable(Y){
   const nowKey=now.getFullYear()*12+now.getMonth();
   const M=[...Array(12)].map((_,m)=>{
-    const key=`${Y}-${pad(m+1)}`, idx=Y*12+m, pm=paid[key]||{}, ex=expenses.filter(e=>e.month===key);
+    const key=`${Y}-${pad(m+1)}`, idx=Y*12+m, ex=beforeStart(key)?[]:expenses.filter(e=>e.month===key);
     const active=monthCounts(key);
     return {m,key,ex,active,isCur:idx===nowKey,future:idx>nowKey};
   });
   const tot=vals=>vals.some(v=>v!=null)?rnd2(vals.reduce((t,v)=>t+(v||0),0)):null;
   const row=(label,vals,o={})=>({label,vals,total:"total" in o?o.total:tot(vals),...o});
   const sumOf=(label,parts,o={})=>row(label,M.map((x,m)=>x.active||parts.some(p=>p.vals[m]!=null)?rnd2(parts.reduce((t,p)=>t+(p.vals[m]||0),0)):null),o);
-  const paidAmt=(f,key)=>{const pm=paid[key]||{}; if(!pm[f.key]) return null; const d=dueAmount(f,key); return rnd2(d>0?d:Number(f.amount||0));};
+  const paidAmt=(f,key)=>{const pm=paid[key]||{}; if(!pm[f.key]||beforeStart(key)) return null; const d=dueAmount(f,key); return rnd2(d>0?d:Number(f.amount||0));};
   // income: salary (≈ until it is written) + extra income
   const sal=row("Maaş",M.map(x=>x.active&&(incomeSet(x.key)||!x.future)?incomeFor(x.key):null),{est:M.map(x=>x.active&&!x.future&&!incomeSet(x.key))});
-  const ext=row("Əlavə gəlir",M.map(x=>extraFor(x.key)||null));
+  const ext=row("Əlavə gəlir",M.map(x=>x.active&&extraFor(x.key)||null));
   const inc=sumOf("Gəlir",[sal,ext],{key:"inc",kids:[sal,ext],est:sal.est});
   // loans and the card instalment, then bills and kindergarten
   const card=plan.card, isLoan=f=>f.debt||f.key==="ipoteka"||(card&&f.key===card.taksit);
   /* the card, as in the spreadsheet's card row: what its debt went down by in the month (repayments − card use).
      Card purchases are on the Day page, so this adds only the money that really left. Taksit is part of that drop;
      in a month with no balances written, the taksit ✓ as before. */
-  const cardSpent=(f,key)=>{const mv=cardMoves(key); return mv.paid||mv.used?rnd2(mv.paid-mv.used):paidAmt(f,key);};
+  const cardSpent=(f,key)=>{if(beforeStart(key)) return null; const mv=cardMoves(key); return mv.paid||mv.used?rnd2(mv.paid-mv.used):paidAmt(f,key);};
   const loanRows=plan.fixed.filter(isLoan).map(f=>{
     const isCard=card&&f.key===card.taksit, vals=M.map(x=>isCard?cardSpent(f,x.key):paidAmt(f,x.key)), left=f.debt?debtLeft(f):null;
     if(!isCard&&f.debt&&left<=0&&!vals.some(v=>v!=null)) return null;
@@ -1760,12 +1780,21 @@ function yearTable(Y){
   const daily=row("Gündəlik xərc",M.map(x=>x.active||x.ex.length?rnd2(sumAmt(x.ex)):null),{key:"day",kids:catRows});
   // result
   const all=sumOf("Cəmi xərc",[loans,bills,daily],{cls:"grand"});
-  const net=row("Qalıq",M.map((x,m)=>x.active?rnd2((inc.vals[m]||0)-(all.vals[m]||0)):null),{cls:"net",color:true});
+  // what is left carries into the next month (a minus too): left = carried in + income − spent.
+  // It runs from the start month on, across years; the first month starts from zero.
+  const sk=plan.start||firstDataKey(), sy=Number(sk.slice(0,4));
+  let run=sy<Y?(yearTable(Y-1).net.total||0):0, seen=sy<Y;
+  const cv=[], nv=[];
+  M.forEach((x,m)=>{if(!x.active){cv.push(null); nv.push(null); return;}
+    cv.push(seen?rnd2(run):null); run=rnd2(run+(inc.vals[m]||0)-(all.vals[m]||0)); nv.push(run); seen=true;});
+  const carry=row("Keçən aydan",cv,{cls:"carry",color:true,total:null});
+  const lastNet=[...nv].reverse().find(v=>v!=null);
+  const net=row("Qalıq",nv,{cls:"net",color:true,total:lastNet==null?null:lastNet});
   const debtFs=plan.fixed.filter(f=>f.debt&&!(card&&f.key===card.taksit));
   const dv=M.map(x=>x.active?rnd2(debtFs.reduce((t,f)=>t+debtLeft(f,x.key),0)+(card?cardDebtAt(`${x.key}-31`):0)):null);
   const last=[...dv].reverse().find(v=>v!=null);
   const debt=row("Borc qalığı",dv,{cls:"info",sub:"ayın sonunda",total:last==null?null:last});
-  return {M,rows:[inc,loans,bills,daily,all,net,debt]};
+  return {M,rows:[inc,carry,loans,bills,daily,all,net,debt],inc,carry,all,net};
 }
 function renderYearTable(){
   const T=yearTable(yCur);
@@ -1952,7 +1981,7 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13();
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat==="fond"&&!plan.cats.some(c=>c.key==="fond")?"diger":e.cat}));
   if(Array.isArray(d.car)){car=d.car; lsSet("car",car);}
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
@@ -2064,6 +2093,7 @@ document.querySelector('section[aria-label="Tənzimləmələr"] details').addEve
 function fillSettings(){
   let h=`<label for="setIncome">Adi aylıq gəlir</label><input id="setIncome" type="number" step="0.01" value="${plan.income}">`;
   h+=`<label for="setReserve">Ayın sonunda ehtiyat, ₼</label><input id="setReserve" type="number" step="1" min="0" value="${reserveOf()}">`;
+  h+=`<label for="setStart">Hesab başlanğıcı (ay)</label><input id="setStart" type="month" value="${plan.start||""}">`;
   if(plan.card) h+=`<label for="setCardLimit">${esc(plan.card.name||"Kart")} limiti</label><input id="setCardLimit" type="number" step="1" value="${plan.card.limit||0}">`;
   h+=`<div class="label" style="grid-column:1/-1;margin-top:6px">Sabit ödənişlər</div>`;
   h+=`<div class="sub" style="grid-column:1/-1">Kredit deyilsə, bank və borc xanalarını boş qoyun.</div>`;
@@ -2173,6 +2203,7 @@ $("saveSettings").onclick=async()=>{
   const p=structuredClone(plan);
   p.income=parseFloat($("setIncome").value)||0;
   {const r=parseFloat($("setReserve").value); p.reserve=r>=0?r:200;}
+  {const st=$("setStart").value; if(/^\d{4}-\d{2}$/.test(st)) p.start=st; else delete p.start;}
   if(p.card&&$("setCardLimit")) p.card.limit=parseFloat($("setCardLimit").value)||0;
   p.fixed.forEach(f=>{
     f.amount=parseFloat($("sf_"+f.key).value)||0;
