@@ -997,6 +997,13 @@ const incomeFor=mk=>incomeSet(mk)?Number(paid[mk].income)||0:Number(plan.income|
 // extra income written for the month (bonus, holiday pay…); loans taken are not income and are not written here
 const extraFor=mk=>Number(paid[mk]&&paid[mk].extra)||0;
 const totalIncome=mk=>rnd2(incomeFor(mk)+extraFor(mk));
+const curIdx=()=>now.getFullYear()*12+now.getMonth();
+const isFutureM=mk=>{const [y,m]=mk.split("-").map(Number); return y*12+m-1>curIdx();};
+// does the year count this month? this month always; any other month once something is written for it
+const monthCounts=mk=>{const pm=paid[mk]||{}; return !isFutureM(mk)&&mk===`${now.getFullYear()}-${pad(now.getMonth()+1)}`
+  ||expenses.some(e=>e.month===mk)||incomeSet(mk)||extraFor(mk)>0||plan.fixed.some(f=>pm[f.key]);};
+// salary the year counts: what was written; for this month and earlier ones the usual salary until it is written
+const salaryCounted=mk=>incomeSet(mk)||!isFutureM(mk)?incomeFor(mk):0;
 const fixedTotalFor=mk=>rnd2(plan.fixed.reduce((t,f)=>t+dueAmount(f,mk),0));
 
 function monthStats(y,m){
@@ -1302,11 +1309,11 @@ function renderYear(){
     const ex=expenses.filter(e=>e.month===key);
     const spent=ex.reduce((s,e)=>s+Number(e.amount||0),0);
     const idx=yCur*12+m; const future=idx>nowKey; const has=ex.length>0;
-    const active=!future&&(has||idx===nowKey||incomeSet(key)||extraFor(key)>0);
+    const active=monthCounts(key), inc=active?rnd2(salaryCounted(key)+extraFor(key)):0;
     const byCat={}; ex.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amount);
     return {m,key,spent,future,active,isCur:idx===nowKey,
-      income:active?totalIncome(key):0, fixed:active?fixedTotalFor(key):0,
-      left:active?totalIncome(key)-fixedTotalFor(key)-spent:0, byCat};
+      income:inc, fixed:active?fixedTotalFor(key):0,
+      left:active?inc-fixedTotalFor(key)-spent:0, byCat};
   });
   const act=rows.filter(r=>r.active);
   const sum=k=>act.reduce((s,r)=>s+r[k],0);
@@ -1718,15 +1725,15 @@ function yearTable(Y){
   const nowKey=now.getFullYear()*12+now.getMonth();
   const M=[...Array(12)].map((_,m)=>{
     const key=`${Y}-${pad(m+1)}`, idx=Y*12+m, pm=paid[key]||{}, ex=expenses.filter(e=>e.month===key);
-    const active=idx<=nowKey&&(ex.length>0||idx===nowKey||incomeSet(key)||extraFor(key)>0||plan.fixed.some(f=>pm[f.key]));
-    return {m,key,ex,active,isCur:idx===nowKey};
+    const active=monthCounts(key);
+    return {m,key,ex,active,isCur:idx===nowKey,future:idx>nowKey};
   });
   const tot=vals=>vals.some(v=>v!=null)?rnd2(vals.reduce((t,v)=>t+(v||0),0)):null;
   const row=(label,vals,o={})=>({label,vals,total:"total" in o?o.total:tot(vals),...o});
   const sumOf=(label,parts,o={})=>row(label,M.map((x,m)=>x.active||parts.some(p=>p.vals[m]!=null)?rnd2(parts.reduce((t,p)=>t+(p.vals[m]||0),0)):null),o);
   const paidAmt=(f,key)=>{const pm=paid[key]||{}; if(!pm[f.key]) return null; const d=dueAmount(f,key); return rnd2(d>0?d:Number(f.amount||0));};
   // income: salary (≈ until it is written) + extra income
-  const sal=row("Maaş",M.map(x=>x.active?incomeFor(x.key):null),{est:M.map(x=>x.active&&!incomeSet(x.key))});
+  const sal=row("Maaş",M.map(x=>x.active&&(incomeSet(x.key)||!x.future)?incomeFor(x.key):null),{est:M.map(x=>x.active&&!x.future&&!incomeSet(x.key))});
   const ext=row("Əlavə gəlir",M.map(x=>extraFor(x.key)||null));
   const inc=sumOf("Gəlir",[sal,ext],{key:"inc",kids:[sal,ext],est:sal.est});
   // loans and the card instalment, then bills and kindergarten
