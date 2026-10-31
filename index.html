@@ -643,8 +643,11 @@ details summary{cursor:pointer;font-weight:600}
       <button class="btn primary" id="backupBtn" type="button">Ehtiyat nüsxəni saxla</button>
       <button class="btn" id="restoreBtn" type="button">Fayldan bərpa et</button>
       <button class="btn" id="exportBtn" type="button">Excel faylı</button>
+      <button class="btn" id="impBtn" type="button">Excel-dən xərc əlavə et</button>
+      <button class="btn" id="impUndo" type="button" hidden>Son əlavəni geri al</button>
     </div>
     <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+    <input type="file" id="impFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
     <div class="note" id="lastExport"></div>
     <div class="ghbox">
       <div class="label">GitHub-a avtomatik ehtiyat · ayda bir dəfə</div>
@@ -1893,7 +1896,7 @@ window.addEventListener("resize",()=>updateHints());
 /* ---------- backup, restore, Excel ---------- */
 let XLSXP=null;
 function updBackup(){
-  $("backupPanel").hidden=view==="day"||view==="car";
+  $("backupPanel").hidden=view==="day"||view==="car"; updImpUndo();
   let last=null; try{last=localStorage.getItem("lastBackup")}catch(e){}
   if(last){const [y,m,d]=last.split("-"); const days=Math.floor((Date.parse(TODAY)-Date.parse(last))/864e5);
     $("lastExport").textContent=`Son ehtiyat nüsxə: ${d}.${m}.${y}`+(days>=30?" · bir aydan çox keçib, yenisini saxlayın":"");}
@@ -2003,6 +2006,68 @@ function applyBackup(d,from){
   render(); fillSettings(); toast(`${expenses.length} xərc bərpa olundu`);
   return true;
 }
+/* ---------- add expenses from an Excel file ----------
+   A sheet with the columns Tarix · Kateqoriya · Qeyd · Məbləğ (the app's own "Xərclər" layout). Expenses already in the
+   app (same day, amount and note) are skipped, so adding the same file twice adds nothing. The last batch can be undone. */
+function isoOf(v){
+  if(typeof v==="number"&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5)); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;}
+  const t=String(v??"").trim(); let m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  m=t.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/); return m?`${m[3]}-${pad(m[2])}-${pad(m[1])}`:"";
+}
+function catKeyOf(name){
+  const n=norm(name||""), has=k=>plan.cats.some(c=>c.key===k), c=plan.cats.find(c=>norm(c.name)===n||norm(c.key)===n);
+  if(c) return c.key;
+  if(/benzin/.test(n)&&has("avto")) return "avto";          // no Benzin category here: it is a car cost
+  return has("diger")?"diger":plan.cats[0].key;
+}
+function expFromWorkbook(X,wb){
+  for(const name of wb.SheetNames){
+    const rows=X.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:null});
+    const hi=rows.findIndex(r=>r&&r.some(c=>norm(c??"")==="tarix")&&r.some(c=>/^mebleg/.test(norm(c??""))));
+    if(hi<0) continue;
+    const h=rows[hi].map(c=>norm(c??"")), iD=h.indexOf("tarix"), iC=h.findIndex(x=>x.startsWith("kateqoriya")),
+      iN=h.indexOf("qeyd"), iA=h.findIndex(x=>x.startsWith("mebleg"));
+    const out=[];
+    rows.slice(hi+1).forEach(r=>{if(!r) return; const d=isoOf(r[iD]), a=Number(String(r[iA]??"").replace(",","."));
+      if(!d||!(a>0)) return;
+      out.push({date:d,cat:catKeyOf(iC>=0?r[iC]:""),note:iN>=0&&r[iN]!=null?String(r[iN]).trim():"",amount:rnd2(a)});});
+    if(out.length) return out;
+  }
+  return [];
+}
+const IMP_KEY="lastImport";
+function updImpUndo(){const li=lsGet(IMP_KEY,null); $("impUndo").hidden=!(li&&expenses.some(e=>e.imp===li.id));}
+$("impBtn").onclick=()=>$("impFile").click();
+$("impFile").onchange=async ev=>{
+  const f=ev.target.files&&ev.target.files[0]; ev.target.value=""; if(!f) return;
+  let recs;
+  try{const X=await loadXLSX(); recs=expFromWorkbook(X,X.read(await f.arrayBuffer(),{type:"array"}));}catch(x){toast("Fayl oxunmadı"); return;}
+  if(!recs.length){toast("Faylda xərc tapılmadı"); return;}
+  // skip what is already here, one for one (two equal lunches on the same day are two expenses)
+  const key=e=>`${e.date}|${rnd2(Number(e.amount))}|${norm(e.note||"")}`, cnt=new Map();
+  expenses.forEach(e=>{const k=key(e); cnt.set(k,(cnt.get(k)||0)+1);});
+  const fresh=recs.filter(e=>{const k=key(e), n=cnt.get(k)||0; if(n>0){cnt.set(k,n-1); return false;} return true;});
+  const skip=recs.length-fresh.length;
+  if(!fresh.length){toast(`Bu xərclərin hamısı artıq var (${skip})`); return;}
+  const months=[...new Set(fresh.map(e=>e.date.slice(0,7)))].sort().map(mk=>{const [y,m]=mk.split("-").map(Number); return `${MONTHS[m-1]} ${y}`;});
+  if(!confirm(`${fresh.length} xərc əlavə olunsun?\nCəmi ${fmt(sumAmt(fresh))} ₼ · ${months.join(", ")}`+(skip?`\n${skip} xərc artıq var, onlar əlavə olunmayacaq.`:""))) return;
+  const t=Date.now(), id="i"+t.toString(36);
+  fresh.forEach((e,i)=>{e.month=e.date.slice(0,7); e.created=t+i; e.imp=id;});
+  try{
+    if(store==="db"){for(const e of fresh) await addExpense(e);}
+    else{fresh.forEach((e,i)=>{e.id="l"+t+"_"+i; expenses.push(e);}); lsSet("expenses",expenses);}
+    lsSet(IMP_KEY,{id,n:fresh.length,at:t}); render(); updImpUndo(); toast(`${fresh.length} xərc əlavə olundu`);
+  }catch(x){toast("Yadda saxlanmadı")}
+};
+$("impUndo").onclick=async()=>{
+  const li=lsGet(IMP_KEY,null); if(!li) return; const del=expenses.filter(e=>e.imp===li.id);
+  if(!del.length||!confirm(`Son əlavə olunan ${del.length} xərc silinsin?`)) return;
+  try{
+    if(store==="db"){for(const e of del) await delExpense(e.id);}
+    else{expenses=expenses.filter(e=>e.imp!==li.id); lsSet("expenses",expenses);}
+    lsSet(IMP_KEY,null); render(); updImpUndo(); toast(`${del.length} xərc silindi`);
+  }catch(x){toast("Silinmədi")}
+};
 $("restoreFile").onchange=async ev=>{
   const f=ev.target.files&&ev.target.files[0]; ev.target.value=""; if(!f) return;
   let d; try{d=JSON.parse(await f.text())}catch(e){d=null}
