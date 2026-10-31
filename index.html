@@ -1508,7 +1508,7 @@ function renderFluids(){
   // one line per fluid: its oil, when it was changed, and when it has to be changed next
   $("fluidList").innerHTML=`<thead><tr><th>Maye</th><th>Son dəyişmə</th><th>Nə vaxt dəyişməli</th></tr></thead><tbody>`+fluids().map(fl=>{
     const st=fluidState(fl), L=st.last, oil=oilOf(fl);
-    const last=L?`${dNum(L.date)}${L.odo?`<small>${fmt0(L.odo)} mil</small>`:""}`:`<span class="dim">yazılmayıb</span>`;
+    const last=L?(L.odo?`${fmt0(L.odo)} mil<small>${dNum(L.date)}</small>`:dNum(L.date)):`<span class="dim">yazılmayıb</span>`;
     const when=!L?"—":st.nOdo?`${fmt0(st.nOdo)} mil${st.nDate?`<small>ən gec ${mYear(st.nDate)}</small>`:""}`:st.nDate?mYear(st.nDate):"—";
     const add=fl.key==="motor"?oilUse().short:"";
     return `<tr data-fl="${fl.key}"><td><span class="dot ${st.cls}"></span>${esc(fl.name)}${oil?`<small>${esc(oil)}</small>`:""}${add?`<small>${add}</small>`:""}</td><td>${last}</td><td class="${st.cls==="bad"?"bad":""}">${when}</td></tr>`;
@@ -1565,7 +1565,7 @@ function openFluid(key){
   $("flTitle").textContent=fl.name; $("flEvery").value=fl.every||""; $("flMonths").value=fl.months||""; $("flOil").value=oilOf(fl);
   $("oilBox").hidden=key!=="motor"; if(key==="motor") $("oilStats").innerHTML=oilUse().html;
   const st=fluidState(fl);
-  $("flInfo").innerHTML=L?`<span>Son dəyişmə: <b>${dNum(L.date)}</b>${L.odo?` · <b>${fmt0(L.odo)} mil</b>`:""}</span>`+
+  $("flInfo").innerHTML=L?`<span>Son dəyişmə: ${L.odo?`<b>${fmt0(L.odo)} mil</b> · `:""}<b>${dNum(L.date)}</b></span>`+
     `<span>Nə vaxt dəyişməli: <b>${[st.nOdo?`${fmt0(st.nOdo)} mil`:"",st.nDate?dNum(st.nDate):""].filter(Boolean).join("</b> və ya <b>")||"—"}</b></span>`:`<span>Son dəyişmə hələ yazılmayıb.</span>`;
   $("flDate").value=L?L.date:""; $("flOdo").value=L&&L.odo?L.odo:"";
   $("flSheet").hidden=false;
