@@ -163,6 +163,12 @@ details summary{cursor:pointer;font-weight:600}
 .cartop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .carfilter{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
 .carfilter select{width:auto;max-width:210px;padding:6px 8px}
+.cparts tbody tr{cursor:pointer}
+.cparts td:first-child{width:38%}
+.cparts .pbar{display:block;height:4px;border-radius:2px;background:var(--accent);opacity:.75;margin-top:5px}
+.cparts td small{display:block;font-size:.72rem;color:var(--muted);font-weight:400}
+.cparts .all{font-weight:700}
+.cpmore{margin-top:8px}
 .ctable{width:max-content;min-width:100%;border-collapse:collapse;font-size:.86rem}
 .ctable th,.ctable td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
 .ctable th+th,.ctable td+td{border-left:1px solid var(--line)}
@@ -622,6 +628,11 @@ details summary{cursor:pointer;font-weight:600}
       <h2>Yağlar və mayelər</h2>
       <button class="odoline" type="button" id="odoBtn"><span>İndiki yürüş</span><span><b id="odoNow">—</b> ✎</span></button>
       <table class="dtable ftable" id="fluidList"></table>
+    </section>
+    <section class="panel" aria-label="Hissələr üzrə xərc">
+      <div class="cartop"><h2>Hissələr üzrə xərc</h2><label class="carfilter">Dövr <select id="cpYear"><option value="">Hamısı</option></select></label></div>
+      <table class="dtable cparts" id="cpTable"></table>
+      <button class="btn cpmore" type="button" id="cpMore" hidden></button>
     </section>
     <section class="panel" aria-label="Təmir və dəyişmələr">
       <div class="cartop"><h2>Təmir qeydləri</h2><button class="btn primary" type="button" id="carAdd">+ Yeni qeyd</button></div>
@@ -1404,7 +1415,7 @@ function renderYear(){
 /* ---------- car log: what was changed on the car, when, at what mileage, what the part and the work cost ----------
    Stored apart from the budget (this phone, or budget/car on the Claude page). A new record can also be written
    as an "Avto" expense of that day; the two stay linked (editing or deleting the record changes the expense too). */
-let car=[], carFilter="", csId=null, csFluid=null, csExpFrom=null;
+let car=[], carFilter="", csId=null, csFluid=null, csExpFrom=null, cpYear="", cpAll=false;
 /* the Day page's "Avto" expenses show in the car log too (and count in its totals), unless a car record already
    stands for them. Such a line can be opened and completed (mileage, part, master) — it then becomes a car record
    linked to that same expense, so nothing is counted twice. */
@@ -1414,7 +1425,7 @@ const autoPart=n=>{const t=norm(n||""); return /benzin|yanacaq|azs/.test(t)?"Ben
 function dailyCarRows(){
   const k=avtoKey(); if(!k) return [];
   const linked=new Set(car.map(r=>r.expId).filter(Boolean));
-  return expenses.filter(e=>e.cat===k&&!linked.has(e.id)).map(e=>({id:"e:"+e.id,exp:e.id,date:e.date,odo:null,part:autoPart(e.note),work:e.note||"",
+  return expenses.filter(e=>e.cat===k&&!linked.has(e.id)&&!e.inCar).map(e=>({id:"e:"+e.id,exp:e.id,date:e.date,odo:null,part:autoPart(e.note),work:e.note||"",
     brand:"",place:"",partCost:Number(e.amount)||0,labor:0,next:"",daily:true}));
 }
 const MI=1.609344;
@@ -1438,7 +1449,8 @@ function renderCar(){
   $("carFilter").innerHTML=`<option value="">Hamısı</option>`+parts.map(p=>`<option value="${esc(p)}"${p===carFilter?" selected":""}>${esc(p)}</option>`).join("");
   $("csParts").innerHTML=parts.map(p=>`<option value="${esc(p)}">`).join("");
   $("csPlaces").innerHTML=[...new Set(rows.map(r=>(r.place||"").trim()).filter(Boolean))].map(p=>`<option value="${esc(p)}">`).join("");
-  const shown=carFilter?rows.filter(r=>(r.part||"").trim()===carFilter):rows;
+  const shown=carFilter?rows.filter(r=>partKey(r.part)===partKey(carFilter)):rows;
+  renderCarParts(rows);
   // columns: when, mileage, part, what was done, where — then the money at the end
   const head=`<thead><tr><th>Tarix</th><th>Yürüş, mil</th><th>Hissə</th><th>Görülən iş</th><th>Harda edilib</th><th>Detal ₼</th><th>Usta ₼</th><th>Cəmi ₼</th></tr></thead>`;
   let body="", yr=null;
@@ -1456,6 +1468,33 @@ function renderCar(){
   updateHints();
 }
 $("carFilter").onchange=ev=>{carFilter=ev.target.value; renderCar();};
+// one key for a part name in any spelling: "Motor yağı" = "Motor yag", "Soyutma sistemi" = "soyutma sistem"
+const partKey=name=>norm(name||"").split(/\s+/).filter(Boolean).map(w=>w.length>=4?w.replace(/s?i$/,""):w).join(" ");
+/* where the car money went: the log grouped by part (same name in any spelling), biggest first.
+   Tapping a part opens its records below. */
+function renderCarParts(rows){
+  const years=[...new Set(rows.map(r=>r.date.slice(0,4)))].sort().reverse();
+  if(cpYear&&!years.includes(cpYear)) cpYear="";
+  $("cpYear").innerHTML=`<option value="">Hamısı</option>`+years.map(y=>`<option${y===cpYear?" selected":""}>${y}</option>`).join("");
+  const G=new Map();
+  (cpYear?rows.filter(r=>r.date.startsWith(cpYear)):rows).forEach(r=>{
+    const name=(r.part||"").trim(), k=partKey(name); let g=G.get(k);
+    if(!g){g={k,names:new Map(),n:0,pc:0,lb:0,tot:0}; G.set(k,g);}
+    g.names.set(name,(g.names.get(name)||0)+1); g.n++; g.pc+=Number(r.partCost||0); g.lb+=Number(r.labor||0); g.tot+=carTotal(r);});
+  const arr=[...G.values()].filter(g=>g.tot>0).sort((a,b)=>b.tot-a.tot), all=rnd2(arr.reduce((t,g)=>t+g.tot,0)), max=arr.length?arr[0].tot:1;
+  const nameOf=g=>g.k?[...g.names.entries()].sort((a,b)=>b[1]-a[1])[0][0]:"";
+  const TOP=10, list=cpAll?arr:arr.slice(0,TOP), n0=v=>v?fmt0(v):"–";
+  $("cpTable").innerHTML=arr.length?`<thead><tr><th>Hissə</th><th>Dəfə</th><th>Detal ₼</th><th>Usta ₼</th><th>Cəmi ₼</th></tr></thead><tbody>`+
+    list.map(g=>`<tr data-part="${esc(nameOf(g))}"><td>${g.k?esc(nameOf(g)):'<span class="dim">Hissə yazılmayıb</span>'}<span class="pbar" style="width:${Math.max(4,g.tot/max*100)}%"></span></td>`+
+      `<td>${g.n}</td><td>${n0(g.pc)}</td><td>${n0(g.lb)}</td><td class="all">${fmt0(g.tot)}<small>${all?Math.round(g.tot/all*100):0}%</small></td></tr>`).join("")+
+    `</tbody><tfoot><tr><td>Cəmi</td><td>${arr.reduce((t,g)=>t+g.n,0)}</td><td>${fmt0(arr.reduce((t,g)=>t+g.pc,0))}</td><td>${fmt0(arr.reduce((t,g)=>t+g.lb,0))}</td><td class="all">${fmt0(all)}</td></tr></tfoot>`
+    :`<tbody><tr><td class="dim">Hələ qeyd yoxdur.</td></tr></tbody>`;
+  $("cpMore").hidden=arr.length<=TOP; $("cpMore").textContent=cpAll?"Az göstər":`Hamısını göstər (${arr.length})`;
+}
+$("cpYear").onchange=ev=>{cpYear=ev.target.value; renderCar();};
+$("cpMore").onclick=()=>{cpAll=!cpAll; renderCar();};
+$("cpTable").addEventListener("click",ev=>{const r=ev.target.closest("tr[data-part]"); if(!r) return;
+  carFilter=r.dataset.part; $("carLog").open=true; renderCar(); $("carLog").scrollIntoView({behavior:"smooth",block:"start"});});
 /* oils and fluids: the last change comes from the log (a record made with "Dəyişdi", or one whose words say it,
    e.g. "Motor yag … deyisdi", "Karopka yagi", "Rulavoy … atf yag", "Antifriz"), or from a date written by hand.
    Next change = last + interval in miles or months, whichever comes first; a "Növbəti" mileage in the record wins. */
@@ -2026,11 +2065,14 @@ function expFromWorkbook(X,wb){
     const hi=rows.findIndex(r=>r&&r.some(c=>norm(c??"")==="tarix")&&r.some(c=>/^mebleg/.test(norm(c??""))));
     if(hi<0) continue;
     const h=rows[hi].map(c=>norm(c??"")), iD=h.indexOf("tarix"), iC=h.findIndex(x=>x.startsWith("kateqoriya")),
-      iN=h.indexOf("qeyd"), iA=h.findIndex(x=>x.startsWith("mebleg"));
+      iN=h.indexOf("qeyd"), iA=h.findIndex(x=>x.startsWith("mebleg")), iV=h.findIndex(x=>x.startsWith("avto"));
     const out=[];
     rows.slice(hi+1).forEach(r=>{if(!r) return; const d=isoOf(r[iD]), a=Number(String(r[iA]??"").replace(",","."));
       if(!d||!(a>0)) return;
-      out.push({date:d,cat:catKeyOf(iC>=0?r[iC]:""),note:iN>=0&&r[iN]!=null?String(r[iN]).trim():"",amount:rnd2(a)});});
+      const e={date:d,cat:catKeyOf(iC>=0?r[iC]:""),note:iN>=0&&r[iN]!=null?String(r[iN]).trim():"",amount:rnd2(a)};
+      // "Avto cədvəlində var": the job is already in the car log, so it is not shown there a second time
+      if(iV>=0&&/^(beli|he|var|1|true|x)$/.test(norm(r[iV]??""))) e.inCar=true;
+      out.push(e);});
     if(out.length) return out;
   }
   return [];
