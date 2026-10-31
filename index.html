@@ -254,6 +254,9 @@ details summary{cursor:pointer;font-weight:600}
 .incview .incsum{font-size:1.25rem;font-weight:700;color:var(--ok);white-space:nowrap}
 .incview .x{font-size:1.05rem;padding:6px 8px}
 .incview:hover .x{color:var(--accent)}
+.incleft{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:.92rem;color:var(--muted)}
+.incleft b{font-family:var(--f-num);color:var(--fg);margin-left:4px}
+.incleft .rest b{font-size:1.15rem}
 .incrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}
 .incrow label{display:flex;flex-direction:column;gap:3px;min-width:0}
 .incrow input{font-family:var(--f-num);font-size:1rem;text-align:right}
@@ -530,6 +533,7 @@ details summary{cursor:pointer;font-weight:600}
         <button class="btn primary" type="submit">Yaz</button>
       </div>
     </form>
+    <div class="incleft" id="incLeft" hidden><span>Xərc<b id="incSpent"></b></span><span class="rest">Qalıq<b id="incRest"></b></span></div>
   </section>
 
 
@@ -1142,6 +1146,11 @@ function renderIncome(mk){
   sub.className="sub"+(!has&&thisM?" warn":"");
   sub.textContent=editing?"düzəliş":thisM?"maaş gələndə yazın":"yazılmayıb";
   $("incAmount").placeholder=fmt0(plan.income);
+  // what is left of the month's income after what was spent (the same numbers as the year table)
+  const T=yearTable(y), inc=T.rows[0].vals[m-1], spent=T.rows[4].vals[m-1], net=T.rows[5].vals[m-1], est=T.rows[0].est&&T.rows[0].est[m-1];
+  $("incLeft").hidden=net==null;
+  if(net!=null){$("incSpent").textContent=fmt0(spent||0)+" ₼";
+    $("incRest").textContent=(est?"≈":"")+fmt0(net)+" ₼"; $("incRest").style.color=net<0?"var(--bad)":"var(--ok)";}
   const inp=$("incAmount"), ex=$("incExtra");
   if((document.activeElement!==inp&&document.activeElement!==ex)||inp.dataset.mk!==mk) fillIncome(mk);
 }
