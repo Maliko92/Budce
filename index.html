@@ -246,6 +246,7 @@ details summary{cursor:pointer;font-weight:600}
 .dtable .all{font-weight:700}
 .dtable tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0}
 .dtable .dim{color:var(--muted)}
+.dtable td small{display:block;font-size:.72rem;color:var(--muted);font-weight:400}
 .incform{display:flex;flex-direction:column;gap:8px}
 .inchead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .inchead .sub.ok{color:var(--ok)} .inchead .sub.warn{color:var(--warn)}
@@ -1005,6 +1006,9 @@ function payoffOf(f){
   const r=Number(f.rate||0)/1200, pay=debtPay(f); if(!(r>0)||!(pay>0)) return left;
   return rnd2(pay*(1-Math.pow(1+r,-left/pay))/r);
 }
+// payments still to make on a loan, counting from today's ticks (the last one can be smaller)
+function monthsLeft(f){const l=f&&f.debt?debtLeft(f):0, p=f?debtPay(f):0; return l>0&&p>0?Math.ceil(l/p-1e-9):0;}
+const monthsTxt=n=>n>0?`${n} ay qalıb`:"";
 function debtLeft(f,upto){ if(!f.debt) return null;
   return Math.max(0,rnd2(Number(f.debt.left||0)-marksSince(f,f.debt.from,upto)*debtPay(f))); }
 function debtLeftBefore(f,mk){ if(!f.debt) return null; return mk<=f.debt.from?Number(f.debt.left||0):debtLeft(f,prevKey(mk)); }
@@ -1358,8 +1362,8 @@ function renderYear(){
   // debts one under another, in the payments-list order; the card's instalment and grace debt are one number
   const debts=[];
   plan.fixed.forEach(f=>{
-    if(plan.card&&f.key===plan.card.taksit){const d=cardDebtAt(); if(d>0) debts.push({name:plan.card.name||"Kart",left:d,now:d}); return;}
-    if(f.debt){const l=debtLeft(f); if(l>0) debts.push({name:f.bank||f.name,left:l,now:payoffOf(f)}); return;}
+    if(plan.card&&f.key===plan.card.taksit){const d=cardDebtAt(); if(d>0) debts.push({name:plan.card.name||"Kart",left:d,now:d,mo:monthsLeft(f)?`taksit ${monthsLeft(f)} ay`:""}); return;}
+    if(f.debt){const l=debtLeft(f); if(l>0) debts.push({name:f.bank||f.name,left:l,now:payoffOf(f),mo:monthsTxt(monthsLeft(f))}); return;}
     if(f.key==="ipoteka") debts.push({name:f.name,left:null,now:null});
   });
   if(plan.card&&!plan.fixed.some(f=>f.key===plan.card.taksit)){const g=cardDebtAt(); if(g>0) debts.push({name:plan.card.name||"Kart",left:g,now:g});}
@@ -1371,7 +1375,7 @@ function renderYear(){
   const n0=v=>fmt0(v), known=debts.filter(d=>d.left!==null);
   const tl=rnd2(known.reduce((t,d)=>t+d.left,0)), tn=rnd2(known.reduce((t,d)=>t+d.now,0));
   $("yDebtList").innerHTML=debts.length?`<thead><tr><th>Borc, ₼</th><th>Əsas borc</th><th>Faiz</th><th>Cəmi</th></tr></thead><tbody>`+
-    debts.map(d=>`<tr><td>${esc(d.name)}</td>`+(d.left===null?'<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>'
+    debts.map(d=>`<tr><td>${esc(d.name)}${d.mo?`<small>${d.mo}</small>`:""}</td>`+(d.left===null?'<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>'
       :`<td>${n0(d.now)}</td><td class="int">${n0(rnd2(d.left-d.now))}</td><td class="all">${n0(d.left)}</td>`)+`</tr>`).join("")+`</tbody>`+
     (known.length>1?`<tfoot><tr><td>Cəmi</td><td>${n0(tn)}</td><td class="int">${n0(rnd2(tl-tn))}</td><td class="all">${n0(tl)}</td></tr></tfoot>`:""):"";
 
@@ -1774,7 +1778,8 @@ function yearTable(Y){
   const loanRows=plan.fixed.filter(isLoan).map(f=>{
     const isCard=card&&f.key===card.taksit, vals=M.map(x=>isCard?cardSpent(f,x.key):paidAmt(f,x.key)), left=f.debt?debtLeft(f):null;
     if(!isCard&&f.debt&&left<=0&&!vals.some(v=>v!=null)) return null;
-    return row(isCard?(card.name||"Kart"):(f.bank||f.name),vals);
+    const n=Y>=now.getFullYear()?monthsLeft(f):0;
+    return row(isCard?(card.name||"Kart"):(f.bank||f.name),vals,n?{sub:isCard?`taksit ${n} ay`:monthsTxt(n)}:{});
   }).filter(Boolean);
   const loans=sumOf("Kreditlər",loanRows,{key:"loan",kids:loanRows});
   const billRows=plan.fixed.filter(f=>!isLoan(f)).map(f=>row(f.name,M.map(x=>paidAmt(f,x.key))));
