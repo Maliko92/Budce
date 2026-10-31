@@ -920,6 +920,12 @@ function migrateV14(){
   if(!plan.start) plan.start="2026-11";
   plan.v14=true; lsSet("plan",plan);
 }
+// October counts too (the user asked): the count starts from October 2026
+function migrateV15(){
+  if(plan.v15) return;
+  if(!plan.start||plan.start==="2026-11") plan.start="2026-10";
+  plan.v15=true; lsSet("plan",plan);
+}
 function migrateV8(){
   if(plan.v8) return;
   const fi=plan.cats.findIndex(c=>c.key==="fond");
@@ -968,7 +974,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{}); car=lsGet("car",[]);
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14(); migrateV15();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -1981,7 +1987,7 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14();
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14(); migrateV15();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat==="fond"&&!plan.cats.some(c=>c.key==="fond")?"diger":e.cat}));
   if(Array.isArray(d.car)){car=d.car; lsSet("car",car);}
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
