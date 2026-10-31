@@ -997,7 +997,7 @@ async function boot(){
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
   $("welcome").hidden=!!seen||expenses.length>0;
-  render(); fillSettings(); updBackup(); updGh();
+  render(); restoreView(); fillSettings(); updBackup(); updGh();
   setTimeout(ghAuto,1500);
 }
 
@@ -1156,6 +1156,7 @@ function renderDay(){
 }
 
 function renderMonth(){
+  if(view==="month") saveViewState();
   $("mname").textContent=`${MONTHS[cur.m]} ${cur.y}`;
   const st=monthStats(cur.y,cur.m);
   const {mk,monthExp,fixedTotal,spent,daysLeft,isThis,fundLeft,free,daily}=st;
@@ -1355,6 +1356,7 @@ function paidFixedFor(mk){
   return plan.fixed.filter(f=>pm[f.key]).reduce((t,f)=>{const d=dueAmount(f,mk); return t+(d>0?d:Number(f.amount||0))},0);
 }
 function renderYear(){
+  if(view==="year") saveViewState();
   $("yname").textContent=String(yCur);
   const nowKey=now.getFullYear()*12+now.getMonth();
   const rows=[...Array(12)].map((_,m)=>{
@@ -2216,6 +2218,16 @@ function setView(v){
   if(v==="month") renderMonth();
   if(v==="year"){autoScrolled=null; renderYear();}
   if(v==="car") renderCar();
+  saveViewState();
+}
+// the page you are on (and its month or year) survives a refresh; a fresh start of the app opens on Gün
+function saveViewState(){try{sessionStorage.setItem("view",JSON.stringify({v:view,y:cur.y,m:cur.m,yc:yCur}))}catch(e){}}
+function restoreView(){
+  let st=null; try{st=JSON.parse(sessionStorage.getItem("view")||"null")}catch(e){}
+  if(!st||!["month","year","car"].includes(st.v)) return;
+  if(Number.isInteger(st.y)&&Number.isInteger(st.m)&&st.m>=0&&st.m<12) cur={y:st.y,m:st.m};
+  if(Number.isInteger(st.yc)) yCur=st.yc;
+  render(); setView(st.v);
 }
 function goMonth(m){cur={y:yCur,m:Number(m)};render();setView("month");window.scrollTo(0,0)}
 
