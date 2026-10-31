@@ -1002,7 +1002,8 @@ const curIdx=()=>now.getFullYear()*12+now.getMonth();
 const isFutureM=mk=>{const [y,m]=mk.split("-").map(Number); return y*12+m-1>curIdx();};
 // does the year count this month? this month always; any other month once something is written for it
 const monthCounts=mk=>{const pm=paid[mk]||{}; return !isFutureM(mk)&&mk===`${now.getFullYear()}-${pad(now.getMonth()+1)}`
-  ||expenses.some(e=>e.month===mk)||incomeSet(mk)||extraFor(mk)>0||plan.fixed.some(f=>pm[f.key]);};
+  ||expenses.some(e=>e.month===mk)||incomeSet(mk)||extraFor(mk)>0||plan.fixed.some(f=>pm[f.key])
+  ||(!!plan.card&&cardBal().some(x=>x.d.slice(0,7)===mk));};
 // salary the year counts: what was written; for this month and earlier ones the usual salary until it is written
 const salaryCounted=mk=>incomeSet(mk)||!isFutureM(mk)?incomeFor(mk):0;
 const fixedTotalFor=mk=>rnd2(plan.fixed.reduce((t,f)=>t+dueAmount(f,mk),0));
@@ -1314,10 +1315,7 @@ function renderYear(){
   const act=rows.filter(r=>r.active);
   const sum=k=>act.reduce((s,r)=>s+r[k],0);
   // the three numbers that matter for the year: income, what was actually spent, and what is still owed
-  const income=sum("income");
-  const fixedPaid=rnd2(rows.reduce((t,r)=>t+paidFixedFor(r.key),0));
-  const daily=rnd2(rows.reduce((t,r)=>t+r.spent,0));
-  const spentAll=rnd2(fixedPaid+daily);
+  const YT=yearTable(yCur), income=YT.rows[0].total||0, spentAll=YT.rows[4].total||0;
   const leftY=rnd2(income-spentAll);
   $("yIncome").textContent=fmt0(income)+" ₼";
   $("ySpent").textContent=fmt0(spentAll)+" ₼";
@@ -1734,10 +1732,14 @@ function yearTable(Y){
   const inc=sumOf("Gəlir",[sal,ext],{key:"inc",kids:[sal,ext],est:sal.est});
   // loans and the card instalment, then bills and kindergarten
   const card=plan.card, isLoan=f=>f.debt||f.key==="ipoteka"||(card&&f.key===card.taksit);
+  /* the card, as in the spreadsheet's card row: what its debt went down by in the month (repayments − card use).
+     Card purchases are on the Day page, so this adds only the money that really left. Taksit is part of that drop;
+     in a month with no balances written, the taksit ✓ as before. */
+  const cardSpent=(f,key)=>{const mv=cardMoves(key); return mv.paid||mv.used?rnd2(mv.paid-mv.used):paidAmt(f,key);};
   const loanRows=plan.fixed.filter(isLoan).map(f=>{
-    const vals=M.map(x=>paidAmt(f,x.key)), left=f.debt?debtLeft(f):null;
-    if(f.debt&&left<=0&&!vals.some(v=>v!=null)) return null;
-    return row(card&&f.key===card.taksit?`${card.name||"Kart"} taksit`:(f.bank||f.name),vals);
+    const isCard=card&&f.key===card.taksit, vals=M.map(x=>isCard?cardSpent(f,x.key):paidAmt(f,x.key)), left=f.debt?debtLeft(f):null;
+    if(!isCard&&f.debt&&left<=0&&!vals.some(v=>v!=null)) return null;
+    return row(isCard?(card.name||"Kart"):(f.bank||f.name),vals);
   }).filter(Boolean);
   const loans=sumOf("Kreditlər",loanRows,{key:"loan",kids:loanRows});
   const billRows=plan.fixed.filter(f=>!isLoan(f)).map(f=>row(f.name,M.map(x=>paidAmt(f,x.key))));
@@ -2196,7 +2198,7 @@ $("mpList").addEventListener("click",ev=>{
   togglePaid(key,fk);
 });
 // one sheet per month for the card: tick the instalment, write/tick the grace debt
-let gsKey=null;
+let gsKey=null, gsEditD=null;            // gsEditD: the day of the balance loaded for editing
 function openGrace(key){
   if(!plan.card) return; gsKey=key;
   const c=plan.card, [y,m]=key.split("-").map(Number), curMk=TODAY.slice(0,7);
@@ -2205,7 +2207,7 @@ function openGrace(key){
   $("gsTPart").hidden=!tf||(tDue<=0&&!tOn);
   $("gsTTxt").textContent=`${tf?fmt(tDue||tf.amount):0} ₼ ödənilib`;
   $("gsTPaid").checked=tOn;
-  $("gsBal").value=""; $("gsBalDate").value=key>=curMk?TODAY:`${key}-${pad(new Date(y,m,0).getDate())}`;
+  $("gsBal").value=""; gsEditD=null; $("gsBalDate").value=key>=curMk?TODAY:`${key}-${pad(new Date(y,m,0).getDate())}`;
   drawCard(key); $("graceSheet").hidden=false;
 }
 function drawCard(mk){
@@ -2227,9 +2229,9 @@ $("gsList").addEventListener("click",async ev=>{
   if(x){plan.card.bal=(plan.card.bal||[]).filter(b=>b.d!==x.dataset.del); drawCard(gsKey); render();
     try{await savePlan(); toast("Silindi")}catch(e){toast("Yadda saxlanmadı")} return;}
   const li=ev.target.closest("[data-bal]"); if(!li) return;
-  const e=(plan.card.bal||[]).find(b=>b.d===li.dataset.bal); if(e){$("gsBal").value=e.v; $("gsBalDate").value=e.d; $("gsBal").focus();}
+  const e=(plan.card.bal||[]).find(b=>b.d===li.dataset.bal); if(e){$("gsBal").value=e.v; $("gsBalDate").value=e.d; gsEditD=e.d; $("gsBal").focus();}
 });
-function closeGrace(){$("graceSheet").hidden=true; gsKey=null}
+function closeGrace(){$("graceSheet").hidden=true; gsKey=null; gsEditD=null}
 $("gsForm").addEventListener("submit",async ev=>{
   ev.preventDefault(); if(!gsKey||!plan.card) return;
   const key=gsKey, c=plan.card, tf=plan.fixed.find(f=>f.key===c.taksit);
@@ -2239,7 +2241,7 @@ $("gsForm").addEventListener("submit",async ev=>{
   // the real debt from the bank; a balance written for the same day replaces the old one (0 is a real balance)
   const v=$("gsBal").value.trim();
   if(v!==""){const a=rnd2(parseFloat(v)); if(!(a>=0)){toast("Məbləği yazın"); return;}
-    const d=$("gsBalDate").value||TODAY; c.bal=[...(c.bal||[]).filter(x=>x.d!==d),{d,v:a}].sort((p,q)=>p.d.localeCompare(q.d));}
+    const d=$("gsBalDate").value||TODAY; c.bal=[...(c.bal||[]).filter(x=>x.d!==d&&x.d!==gsEditD),{d,v:a}].sort((p,q)=>p.d.localeCompare(q.d));}
   closeGrace(); render();
   try{ if(paidChanged) await savePaid(key); await savePlan(); toast("Yadda saxlanıldı") }catch(x){toast("Yadda saxlanmadı")}
 });
