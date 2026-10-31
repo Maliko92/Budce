@@ -188,6 +188,8 @@ details summary{cursor:pointer;font-weight:600}
 .gsum .left.ok b{color:var(--ok)}
 .gspays{font-size:.82rem;color:var(--muted)}
 .gspays li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 0}
+.gspays li[data-bal]{cursor:pointer}
+.gspays .dn{color:var(--ok)} .gspays .up{color:var(--warn)}
 /* oils and fluids: last change, next change, what is left */
 .odoline{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--accent-soft);font-size:.9rem;cursor:pointer;border:0;color:var(--fg);font:inherit;text-align:left;width:100%}
 .odoline b{font-family:var(--f-num);font-size:1.05rem}
@@ -655,19 +657,13 @@ details summary{cursor:pointer;font-weight:600}
       <label class="chk"><input type="checkbox" id="gsTPaid"> <span id="gsTTxt">Ödənilib</span></label>
     </div>
     <div class="sheet-part">
-      <div class="label">Güzəşt borcu (kartdan istifadə)</div>
+      <div class="label">Kart borcu (taksit + güzəşt)</div>
       <div class="gsum" id="gsSum"></div>
       <div class="gsrow">
-        <div class="field"><label class="label" for="gsPay">Ödədim, ₼</label><input id="gsPay" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
-        <div class="field"><label class="label" for="gsPayDate">Tarix</label><input id="gsPayDate" type="date"></div>
+        <div class="field"><label class="label" for="gsBal">Qalıq borc, ₼</label><input id="gsBal" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div class="field"><label class="label" for="gsBalDate">Tarix</label><input id="gsBalDate" type="date"></div>
       </div>
-      <button class="btn" type="button" id="gsPayAll">Qalığın hamısını ödədim</button>
-      <ul class="gspays" id="gsPays"></ul>
-      <div class="label" style="margin-top:4px">Borcun məbləği və son tarixi</div>
-      <div class="gsrow">
-        <div class="field"><label class="label" for="gsAmount">Məbləğ, ₼</label><input id="gsAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
-        <div class="field"><label class="label" for="gsDue">Son tarix</label><input id="gsDue" type="date"></div>
-      </div>
+      <ul class="gspays" id="gsList"></ul>
     </div>
     <div class="btnrow"><button class="btn primary" type="submit">Yadda saxla</button><button class="btn" type="button" id="gsClose">Bağla</button></div>
   </form>
@@ -901,6 +897,11 @@ function migrateV12(){
   plan.fixed.forEach(f=>{if(f.rate==null&&R[f.key]!=null) f.rate=R[f.key];});
   plan.v12=true; lsSet("plan",plan);
 }
+function migrateV13(){
+  if(plan.v13) return;
+  if(plan.card&&!(Number(plan.card.limit)>0)) plan.card.limit=10000;
+  plan.v13=true; lsSet("plan",plan);
+}
 function migrateV8(){
   if(plan.v8) return;
   const fi=plan.cats.findIndex(c=>c.key==="fond");
@@ -949,7 +950,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{}); car=lsGet("car",[]);
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -1166,19 +1167,14 @@ function renderMonthPay(){
   let total=0, paidS=0, n=0, done=0; const rows=[];
   plan.fixed.forEach(f=>{
     if(card&&f.key===card.taksit){
-      const tDue=dueAmount(f,mk), tOn=!!pm[f.key], g=(card.months||{})[mk], mo=card.months||{}, curMk=TODAY.slice(0,7);
-      // this month and later: every grace debt still open; earlier months: that month's own debt
-      const open=mk>=curMk?cardOpenGrace():gLeft(g);
-      const had=mk>=curMk?Object.entries(mo).some(([k,x])=>gLeft(x)>0||(Number(x.amount)>0&&(k===mk||prevKey(k)===mk))):!!(g&&Number(g.amount)>0);
-      const gOn=had&&open<=0, gLate=open>0&&Object.values(mo).some(x=>gLeft(x)>0&&x.due&&x.due<TODAY);
+      const tDue=dueAmount(f,mk), tOn=!!pm[f.key], curMk=TODAY.slice(0,7), known=cardKnown();
+      const bal=cardDebtAt(mk>=curMk?null:`${mk}-31`), mv=cardMoves(mk);
       if(tDue>0){total+=tDue; n++; if(tOn){paidS+=tDue; done++}}
-      const st=(tDue||had)&&(tOn||!tDue)&&(gOn||!had)?"on"
-        :((tDue&&!tOn&&mk>=fd&&idx<nowIdx)||gLate)?"late":(!tDue&&!had)?"empty":"open";
-      const tag=[tDue?`T ${fmt0(tDue)}${tOn?"✓":""}`:"",had?(open>0?`G qalıq ${fmt0(open)}`:"G ✓"):""].filter(Boolean).join(" · ");
-      const rest=rnd2((tOn?0:tDue)+open);
+      const st=tDue&&!tOn?(mk>=fd&&idx<nowIdx?"late":"open"):(tDue||mv.paid>0)?"on":(known||bal>0)?"open":"empty";
+      const tag=[tDue?`T ${fmt0(tDue)}${tOn?" ✓":""}`:"",mv.paid>0?`ödənilib ${fmt0(mv.paid)}`:"",st!=="empty"?"qalıq borc":""].filter(Boolean).join(" · ");
       rows.push(`<li class="mp ${st}" data-card="${mk}"><span class="mpi">${sym[st]}</span>
         <span class="grow"><b>${esc(card.name||"Kart")}</b>${tag?`<span class="mpt">${tag}</span>`:""}</span>
-        <span class="num mpv">${rest>0?fmt(rest)+" ₼":(tDue||had)?"ödənilib":"yaz"}</span></li>`);
+        <span class="num mpv">${st==="empty"?"yaz":fmt(bal)+" ₼"}</span></li>`);
       return;
     }
     const due=dueAmount(f,mk), on=!!pm[f.key];
@@ -1329,14 +1325,14 @@ function renderYear(){
   // debts one under another, in the payments-list order; the card's instalment and grace debt are one number
   const debts=[];
   plan.fixed.forEach(f=>{
-    if(plan.card&&f.key===plan.card.taksit){const t=f.debt?debtLeft(f):0, g=cardOpenGrace(); if(t+g>0) debts.push({name:plan.card.name||"Kart",left:rnd2(t+g),now:rnd2((f.debt?payoffOf(f):0)+g)}); return;}
+    if(plan.card&&f.key===plan.card.taksit){const d=cardDebtAt(); if(d>0) debts.push({name:plan.card.name||"Kart",left:d,now:d}); return;}
     if(f.debt){const l=debtLeft(f); if(l>0) debts.push({name:f.bank||f.name,left:l,now:payoffOf(f)}); return;}
     if(f.key==="ipoteka") debts.push({name:f.name,left:null,now:null});
   });
-  if(plan.card&&!plan.fixed.some(f=>f.key===plan.card.taksit)){const g=cardOpenGrace(); if(g>0) debts.push({name:plan.card.name||"Kart",left:g,now:g});}
+  if(plan.card&&!plan.fixed.some(f=>f.key===plan.card.taksit)){const g=cardDebtAt(); if(g>0) debts.push({name:plan.card.name||"Kart",left:g,now:g});}
   const debtSum=rnd2(debts.reduce((t,d)=>t+(d.left||0),0));
   $("yDebt").textContent=fmt0(debtSum)+" ₼"; $("yDebt").style.color="var(--warn)";
-  const nowSum=rnd2(plan.fixed.filter(f=>f.debt).reduce((t,f)=>t+payoffOf(f),0)+(plan.card?cardOpenGrace():0));
+  const nowSum=rnd2(plan.fixed.filter(f=>f.debt&&!(plan.card&&f.key===plan.card.taksit)).reduce((t,f)=>t+payoffOf(f),0)+(plan.card?cardDebtAt():0));
   $("yDebtNow").textContent=nowSum>0&&nowSum<debtSum-0.5?`indi bağlamaq: ${fmt0(nowSum)} ₼`:"";
   // each debt: the principal left today, the interest still to come, and what will be paid in all
   const n0=v=>fmt0(v), known=debts.filter(d=>d.left!==null);
@@ -1754,8 +1750,8 @@ function yearTable(Y){
   // result
   const all=sumOf("Cəmi xərc",[loans,bills,daily],{cls:"grand"});
   const net=row("Qalıq",M.map((x,m)=>x.active?rnd2((inc.vals[m]||0)-(all.vals[m]||0)):null),{cls:"net",color:true});
-  const debtFs=plan.fixed.filter(f=>f.debt);
-  const dv=M.map(x=>x.active?rnd2(debtFs.reduce((t,f)=>t+debtLeft(f,x.key),0)+(plan.card?cardOpenGrace(x.isCur?TODAY:`${x.key}-31`):0)):null);
+  const debtFs=plan.fixed.filter(f=>f.debt&&!(card&&f.key===card.taksit));
+  const dv=M.map(x=>x.active?rnd2(debtFs.reduce((t,f)=>t+debtLeft(f,x.key),0)+(card?cardDebtAt(`${x.key}-31`):0)):null);
   const last=[...dv].reverse().find(v=>v!=null);
   const debt=row("Borc qalığı",dv,{cls:"info",sub:"ayın sonunda",total:last==null?null:last});
   return {M,rows:[inc,loans,bills,daily,all,net,debt]};
@@ -1794,11 +1790,23 @@ const gLeft=(g,upto)=>g?Math.max(0,rnd2(Number(g.amount||0)-gPaid(g,upto))):0;
 function cardOpenGrace(upto){
   return rnd2(Object.entries((plan.card&&plan.card.months)||{}).filter(([k])=>!upto||prevKey(k)<=upto.slice(0,7)).reduce((t,[,g])=>t+gLeft(g,upto),0));
 }
-function cardFree(){
-  const c=plan.card; if(!c) return 0;
-  const tf=plan.fixed.find(f=>f.key===c.taksit), tLeft=tf&&tf.debt?debtLeft(tf):0;
-  return rnd2(Number(c.limit||0)-cardOpenGrace()-tLeft);
+/* The card's real debt (instalment + grace) is written from the bank: plan.card.bal = [{d:"YYYY-MM-DD", v}].
+   The app works out the rest: a drop between two balances was paid, a rise was card use. */
+const cardBal=()=>((plan.card&&plan.card.bal)||[]).slice().sort((a,b)=>a.d.localeCompare(b.d));
+// the card debt at the end of day `upto` (or now); before the first balance written, the old way (instalment left + grace debts)
+function cardDebtAt(upto){
+  const last=cardBal().filter(x=>!upto||x.d<=upto).pop(); if(last) return rnd2(Number(last.v)||0);
+  const tf=plan.card&&plan.fixed.find(f=>f.key===plan.card.taksit), t=tf&&tf.debt?debtLeft(tf,upto?upto.slice(0,7):undefined):0;
+  return rnd2(t+cardOpenGrace(upto));
 }
+// in month mk: what was paid (drops) and used (rises), each balance against the one before it
+function cardMoves(mk){
+  const b=cardBal(); let pd=0, used=0;
+  b.forEach((x,i)=>{if(i===0||x.d.slice(0,7)!==mk) return; const d=rnd2(Number(x.v)-Number(b[i-1].v)); if(d<0) pd-=d; else used+=d;});
+  return {paid:rnd2(pd),used:rnd2(used)};
+}
+const cardKnown=()=>cardBal().length>0||Object.values((plan.card&&plan.card.months)||{}).some(g=>Number(g.amount)>0);
+function cardFree(){const c=plan.card; return c?rnd2(Number(c.limit||0)-cardDebtAt()):0;}
 async function togglePaid(mk,fk){
   paid[mk]={...(paid[mk]||{}),[fk]:!(paid[mk]&&paid[mk][fk])};
   render();
@@ -1933,7 +1941,7 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12();
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat==="fond"&&!plan.cats.some(c=>c.key==="fond")?"diger":e.cat}));
   if(Array.isArray(d.car)){car=d.car; lsSet("car",car);}
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
@@ -2189,65 +2197,51 @@ $("mpList").addEventListener("click",ev=>{
 });
 // one sheet per month for the card: tick the instalment, write/tick the grace debt
 let gsKey=null;
-let gsMo=null, gsEditKey=null;          // a working copy of the debts while the sheet is open
 function openGrace(key){
   if(!plan.card) return; gsKey=key;
-  const c=plan.card, [y,m]=key.split("-").map(Number);
+  const c=plan.card, [y,m]=key.split("-").map(Number), curMk=TODAY.slice(0,7);
   const tf=plan.fixed.find(f=>f.key===c.taksit), tDue=tf?dueAmount(tf,key):0, tOn=!!(tf&&paid[key]&&paid[key][tf.key]);
   $("gsTitle").textContent=`${c.name||"Kart"} · ${MONTHS[m-1]} ${y}`;
   $("gsTPart").hidden=!tf||(tDue<=0&&!tOn);
   $("gsTTxt").textContent=`${tf?fmt(tDue||tf.amount):0} ₼ ödənilib`;
   $("gsTPaid").checked=tOn;
-  gsMo=structuredClone(c.months||{});
-  // the debt shown for editing: the oldest one still open, else this month's
-  const openKeys=Object.keys(gsMo).filter(k=>gLeft(gsMo[k])>0).sort();
-  gsEditKey=openKeys[0]||(gsMo[key]?key:null);
-  const g=gsEditKey?gsMo[gsEditKey]:null;
-  $("gsAmount").value=g?g.amount:""; $("gsDue").value=g?g.due||"":"";
-  $("gsPay").value=""; $("gsPayDate").value=TODAY;
-  drawGrace(); $("graceSheet").hidden=false;
+  $("gsBal").value=""; $("gsBalDate").value=key>=curMk?TODAY:`${key}-${pad(new Date(y,m,0).getDate())}`;
+  drawCard(key); $("graceSheet").hidden=false;
 }
-function graceView(mo){
-  const open=Object.entries(mo).filter(([,g])=>gLeft(g)>0);
-  const owed=rnd2(open.reduce((t,[,g])=>t+Number(g.amount||0),0)), paidS=rnd2(open.reduce((t,[,g])=>t+gPaid(g),0));
-  return {open,owed,paidS,left:rnd2(owed-paidS)};
+function drawCard(mk){
+  const c=plan.card, b=cardBal(), curMk=TODAY.slice(0,7), known=b.length>0;
+  const bal=cardDebtAt(mk>=curMk?null:`${mk}-31`), start=b.filter(x=>x.d<`${mk}-01`).pop(), mv=cardMoves(mk), lim=Number(c.limit||0);
+  const R=(t,v,cls="")=>`<div class="${cls}"><span>${t}</span><b>${v}</b></div>`;
+  $("gsSum").innerHTML=(start?R("Ayın əvvəlində",fmt(start.v)+" ₼"):"")+(mv.used>0?R("İstifadə","+"+fmt(mv.used)+" ₼"):"")+
+    (mv.paid>0?R("Ödənilib",fmt(mv.paid)+" ₼"):"")+R("Qalıq borc",(known?"":"≈")+fmt(bal)+" ₼","left"+(bal<=0?" ok":""))+
+    (lim>0?R("Boş limit",fmt(rnd2(lim-bal))+" ₼"):"");
+  // this month's balances (or the latest few), each with its change against the one before
+  const idx=new Map(b.map((x,i)=>[x.d,i]));
+  let list=b.filter(x=>x.d.slice(0,7)===mk); if(!list.length) list=b.slice(-3);
+  $("gsList").innerHTML=list.slice().reverse().map(x=>{const i=idx.get(x.d), prev=i>0?b[i-1]:null, d=prev?rnd2(Number(x.v)-Number(prev.v)):0;
+    return `<li data-bal="${x.d}"><span>${dFull(x.d)} · <b>${fmt(x.v)} ₼</b>${d?` <span class="${d<0?"dn":"up"}">${d<0?"−":"+"}${fmt(Math.abs(d))}</span>`:""}</span>`+
+      `<button type="button" class="x" data-del="${x.d}" aria-label="Sil">×</button></li>`;}).join("");
 }
-function drawGrace(){
-  const v=graceView(gsMo), due=v.open.map(([,g])=>g.due).filter(Boolean).sort()[0];
-  $("gsSum").innerHTML=v.open.length?`<div><span>Borc</span><b>${fmt(v.owed)} ₼</b></div><div><span>Ödənilib</span><b>${fmt(v.paidS)} ₼</b></div>`+
-    `<div class="left"><span>Qalıq</span><b>${fmt(v.left)} ₼</b></div>${due?`<div><span>Son tarix</span><b>${dFull(due)}</b></div>`:""}`
-    :`<div class="left ok"><span>Qalıq</span><b>0.00 ₼</b></div>`;
-  $("gsPayAll").hidden=!v.open.length;
-  const pays=Object.entries(gsMo).flatMap(([k,g])=>(g.pays||[]).map((p,i)=>({k,i,...p}))).sort((a,b)=>b.d.localeCompare(a.d)).slice(0,6);
-  $("gsPays").innerHTML=pays.map(p=>`<li><span>${dFull(p.d)} ödənib · ${fmt(p.a)} ₼</span><button type="button" class="x" data-gpay="${p.k}|${p.i}" aria-label="Ödənişi sil">×</button></li>`).join("");
-}
-// a payment goes to the oldest open debts first
-function payGrace(mo,amount,date){
-  let rest=rnd2(amount);
-  Object.keys(mo).sort().forEach(k=>{const g=mo[k]; const l=gLeft(g); if(rest<=0||l<=0) return;
-    const a=Math.min(rest,l); if(!g.pays) g.pays=g.paid&&!gPaid(g)?[]:(g.pays||[]); g.pays.push({d:date,a:rnd2(a)}); rest=rnd2(rest-a);});
-  return rest;
-}
-$("gsPayAll").onclick=()=>{$("gsPay").value=graceView(gsMo).left||"";};
-$("gsPays").addEventListener("click",ev=>{const b=ev.target.closest("[data-gpay]"); if(!b) return;
-  const [k,i]=b.dataset.gpay.split("|"); const g=gsMo[k]; if(g&&g.pays){g.pays.splice(Number(i),1); g.paid=gLeft(g)<=0;} drawGrace();});
-function closeGrace(){$("graceSheet").hidden=true; gsKey=null; gsMo=null; gsEditKey=null}
+$("gsList").addEventListener("click",async ev=>{
+  const x=ev.target.closest("[data-del]");
+  if(x){plan.card.bal=(plan.card.bal||[]).filter(b=>b.d!==x.dataset.del); drawCard(gsKey); render();
+    try{await savePlan(); toast("Silindi")}catch(e){toast("Yadda saxlanmadı")} return;}
+  const li=ev.target.closest("[data-bal]"); if(!li) return;
+  const e=(plan.card.bal||[]).find(b=>b.d===li.dataset.bal); if(e){$("gsBal").value=e.v; $("gsBalDate").value=e.d; $("gsBal").focus();}
+});
+function closeGrace(){$("graceSheet").hidden=true; gsKey=null}
 $("gsForm").addEventListener("submit",async ev=>{
   ev.preventDefault(); if(!gsKey||!plan.card) return;
-  const key=gsKey, c=plan.card, tf=plan.fixed.find(f=>f.key===c.taksit), mo=gsMo;
+  const key=gsKey, c=plan.card, tf=plan.fixed.find(f=>f.key===c.taksit);
   let paidChanged=false;
   if(tf&&!$("gsTPart").hidden){const want=$("gsTPaid").checked, was=!!(paid[key]&&paid[key][tf.key]);
     if(want!==was){paid[key]={...(paid[key]||{}),[tf.key]:want}; paidChanged=true;}}
-  // the debt's amount and last day (kept under the month it is due)
-  const a=parseFloat($("gsAmount").value), due=$("gsDue").value, nk=due?due.slice(0,7):(gsEditKey||key);
-  const old=gsEditKey&&mo[gsEditKey]?mo[gsEditKey]:null;
-  if(a>0){const g={...(old||mo[nk]||{}),amount:rnd2(a),due:due||""}; if(gsEditKey&&gsEditKey!==nk) delete mo[gsEditKey]; mo[nk]=g;}
-  else if(gsEditKey&&$("gsAmount").value.trim()==="") delete mo[gsEditKey];
-  const p=parseFloat($("gsPay").value); let over=0;
-  if(p>0) over=payGrace(mo,p,$("gsPayDate").value||TODAY);
-  Object.values(mo).forEach(g=>{g.paid=gLeft(g)<=0;});
-  c.months=mo; closeGrace(); render();
-  try{ if(paidChanged) await savePaid(key); await savePlan(); toast(over>0?`Yazıldı · ${fmt(over)} ₼ borcdan artıqdır`:"Yadda saxlanıldı") }catch(x){toast("Yadda saxlanmadı")}
+  // the real debt from the bank; a balance written for the same day replaces the old one (0 is a real balance)
+  const v=$("gsBal").value.trim();
+  if(v!==""){const a=rnd2(parseFloat(v)); if(!(a>=0)){toast("Məbləği yazın"); return;}
+    const d=$("gsBalDate").value||TODAY; c.bal=[...(c.bal||[]).filter(x=>x.d!==d),{d,v:a}].sort((p,q)=>p.d.localeCompare(q.d));}
+  closeGrace(); render();
+  try{ if(paidChanged) await savePaid(key); await savePlan(); toast("Yadda saxlanıldı") }catch(x){toast("Yadda saxlanmadı")}
 });
 $("gsClose").onclick=closeGrace;
 // bills that change every month (gas, water, electricity…): write this month's amount, tick when paid
