@@ -450,6 +450,7 @@ details summary{cursor:pointer;font-weight:600}
 .cardtable th:first-child,.cardtable td:first-child{min-width:58px}
 .cardtable tr.cur td{background:var(--accent-soft)}
 #graceList li{flex-wrap:wrap}
+.setgrid input.wide{grid-column:1/-1}
 .sethead{grid-column:1/-1;font-weight:600;margin-top:6px;padding-top:8px;border-top:1px solid var(--line)}
 .dbar{height:6px;border-radius:3px;background:var(--bar);overflow:hidden;margin-top:3px}
 .dbar span{display:block;height:100%;background:var(--ok);border-radius:3px}
@@ -944,6 +945,18 @@ function migrateV15(){
   if(!plan.start||plan.start==="2026-11") plan.start="2026-10";
   plan.v15=true; lsSet("plan",plan);
 }
+// household goods (Manatlıq, 1001 xırdavat) get their own category, after Bazarlıq
+function migrateV16(){
+  if(plan.v16) return;
+  let c=plan.cats.find(c=>c.key==="evesya");
+  if(!c){c={key:"evesya",name:"Ev əşyaları və təsərrüfat",limit:0}; const bi=plan.cats.findIndex(c=>c.key==="bazar"); plan.cats.splice(bi>=0?bi+1:plan.cats.length,0,c);}
+  moveHousehold();
+  plan.v16=true; lsSet("plan",plan);
+}
+function moveHousehold(){
+  let moved=0; expenses.forEach(e=>{if(e.cat!=="evesya"&&/manatliq|1001|xirdavat/.test(norm(e.note||""))){e.cat="evesya"; moved++;}});
+  if(moved) lsSet("expenses",expenses);
+}
 function migrateV8(){
   if(plan.v8) return;
   const fi=plan.cats.findIndex(c=>c.key==="fond");
@@ -992,7 +1005,7 @@ function migrateBanks(){
 }
 async function boot(){
   plan=lsGet("plan",plan); expenses=lsGet("expenses",[]); paid=lsGet("paid",{}); car=lsGet("car",[]);
-  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14(); migrateV15();
+  migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14(); migrateV15(); migrateV16();
   $("status").textContent="Məlumatlar bu telefonda saxlanılır.";
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist() }catch(e){}
   let seen=null; try{seen=localStorage.getItem("welcomeDone")}catch(e){}
@@ -2051,8 +2064,10 @@ function applyBackup(d,from){
   if(!d||d.app!=="aile-budcesi"||!Array.isArray(d.expenses)||!d.plan||!Array.isArray(d.plan.cats)||!Array.isArray(d.plan.fixed)){
     toast(from==="gh"?"GitHub-dakı fayl tanınmadı":"Bu fayl tanınmadı. Ailə Büdcəsindən saxlanmış .json faylını seçin"); return false;}
   if(expenses.length&&!confirm(`Telefondakı ${expenses.length} xərc ${from==="gh"?"GitHub-dakı":"fayldakı"} ${d.expenses.length} xərclə əvəz olunacaq. Davam edilsin?`)) return false;
-  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14(); migrateV15();
+  const old16=!d.plan.v16;
+  plan=d.plan; paid=d.paid||{}; migratePlan(); migrateBanks(); migrateV3(); migrateV4(); migrateV5(); migrateV6(); migrateV7(); migrateV8(); migrateV9(); migrateV10(); migrateV11(); migrateV12(); migrateV13(); migrateV14(); migrateV15(); migrateV16();
   expenses=d.expenses.filter(e=>e&&e.date&&e.month&&Number(e.amount)>0).map((e,i)=>({...e,id:String(e.id||("r"+Date.now()+i)),amount:Number(e.amount),cat:e.cat==="benzin"&&!plan.cats.some(c=>c.key==="benzin")?"avto":e.cat==="fond"&&!plan.cats.some(c=>c.key==="fond")?"diger":e.cat}));
+  if(old16) moveHousehold();             // a backup from before the household goods category
   if(Array.isArray(d.car)){car=d.car; lsSet("car",car);}
   lsSet("plan",plan); lsSet("expenses",expenses); lsSet("paid",paid);
   try{localStorage.setItem("welcomeDone","1")}catch(e){}
@@ -2240,6 +2255,9 @@ function fillSettings(){
   h+=`<label for="setReserve">Ayın sonunda ehtiyat, ₼</label><input id="setReserve" type="number" step="1" min="0" value="${reserveOf()}">`;
   h+=`<label for="setStart">Hesab başlanğıcı (ay)</label><input id="setStart" type="month" value="${plan.start||""}">`;
   if(plan.card) h+=`<label for="setCardLimit">${esc(plan.card.name||"Kart")} limiti</label><input id="setCardLimit" type="number" step="1" value="${plan.card.limit||0}">`;
+  h+=`<div class="label" style="grid-column:1/-1;margin-top:6px">Xərc kateqoriyaları</div>`;
+  plan.cats.forEach((c,i)=>{h+=`<input id="sc_${i}" class="wide" type="text" aria-label="Kateqoriya ${i+1}" value="${esc(c.name)}">`;});
+  h+=`<input id="scNew" class="wide" type="text" aria-label="Yeni kateqoriya" placeholder="+ Yeni kateqoriya (məs. Hədiyyələr)">`;
   h+=`<div class="label" style="grid-column:1/-1;margin-top:6px">Sabit ödənişlər</div>`;
   h+=`<div class="sub" style="grid-column:1/-1">Kredit deyilsə, bank və borc xanalarını boş qoyun.</div>`;
   plan.fixed.forEach(f=>{const k=f.key, dl=debtLeft(f);
@@ -2350,6 +2368,12 @@ $("saveSettings").onclick=async()=>{
   {const r=parseFloat($("setReserve").value); p.reserve=r>=0?r:200;}
   {const st=$("setStart").value; if(/^\d{4}-\d{2}$/.test(st)) p.start=st; else delete p.start;}
   if(p.card&&$("setCardLimit")) p.card.limit=parseFloat($("setCardLimit").value)||0;
+  // categories: a new name for an old one (empty keeps it), and a new category
+  p.cats.forEach((c,i)=>{const el=$("sc_"+i), v=el?el.value.trim():""; if(v) c.name=v;});
+  {const v=$("scNew")?$("scNew").value.trim():"";
+    if(v){ if(p.cats.some(c=>norm(c.name)===norm(v))){toast("Bu kateqoriya artıq var"); return;}
+      let key=(norm(v).replace(/[^a-z0-9]+/g,"")||"cat").slice(0,12), k=key, i=2; while(p.cats.some(c=>c.key===k)) k=key+(i++);
+      p.cats.push({key:k,name:v,limit:0}); }}
   p.fixed.forEach(f=>{
     f.amount=parseFloat($("sf_"+f.key).value)||0;
     if(!$("sb_"+f.key)) return;
